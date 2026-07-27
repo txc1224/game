@@ -5,6 +5,7 @@ import Terminal from './components/Terminal';
 import PlayerPanel from './components/PlayerPanel';
 import RoomPanel from './components/RoomPanel';
 import CommandBar from './components/CommandBar';
+import GuidePanel from './components/GuidePanel';
 import { parseCommand } from './mud';
 
 const SAVE_KEY = 'wulin-mud:save';
@@ -127,6 +128,7 @@ export default function App() {
             onGo={handleGo}
             onTalk={handleTalk}
           />
+          <GuidePanel state={state} onGo={handleGo} onSimple={handleSimple} onTalk={handleTalk} />
         </div>
 
         <div>
