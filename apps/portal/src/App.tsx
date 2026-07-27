@@ -28,6 +28,15 @@ const GAMES: GameCard[] = [
     path: './wulin-mud/',
     emoji: '⚔️',
   },
+  {
+    id: 'card-rogue',
+    title: '黑风塔',
+    subtitle: '卡牌江湖 roguelike',
+    desc: '武侠版杀戮尖塔。组卡组闯塔,回合制出牌,算能量、看意图、堆格挡。每一层都是抉择:杀敌、选牌、篝火休整,直捣黑风寨主。',
+    tags: ['卡牌', 'roguelike', '爬塔'],
+    path: './card-rogue/',
+    emoji: '🃏',
+  },
 ];
 
 export default function App() {

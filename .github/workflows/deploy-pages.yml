@@ -38,6 +38,7 @@ jobs:
         run: |
           pnpm --filter @game/game-core build
           pnpm --filter @game/mud-core build
+          pnpm --filter @game/card-core build
 
       # 各 app 部署到 Pages 下的子路径,合集页在根
       - name: Build portal (base=/game/)
@@ -55,13 +56,19 @@ jobs:
         env:
           VITE_BASE: /game/wulin-mud/
 
+      - name: Build card-rogue (base=/game/card-rogue/)
+        run: pnpm --filter @game/card-rogue build
+        env:
+          VITE_BASE: /game/card-rogue/
+
       # 组装站点:根=合集页,子目录=各游戏
       - name: Assemble site
         run: |
-          mkdir -p public/life-restart public/wulin-mud
+          mkdir -p public/life-restart public/wulin-mud public/card-rogue
           cp -r apps/portal/dist/* public/
           cp -r apps/life-restart/dist/* public/life-restart/
           cp -r apps/wulin-mud/dist/* public/wulin-mud/
+          cp -r apps/card-rogue/dist/* public/card-rogue/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
