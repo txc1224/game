@@ -1,8 +1,13 @@
 import {
   combatPower,
   seededRng,
+  SKILLS,
+  SKILL_MAP,
+  SKILL_KIND_LABELS,
+  canLearn,
   type Attributes,
   type Rng,
+  type Skill,
 } from '@game/game-core';
 import { DIR_LABELS, OPPOSITE, getRoom, rollEncounter, ITEMS, type Direction, type Monster, type Room } from './world.js';
 
@@ -91,7 +96,33 @@ function push(state: MudState, text: string, kind: LogLine['kind'] = 'info'): vo
   state.log.push({ text, kind });
 }
 
-/** 玩家战力(基础属性 + 武器 + 武功数加成) */
+/** 武功提供的战力加成(按 attrBonus 折算,不再只按门数) */
+function skillPower(p: Player): number {
+  let power = 0;
+  for (const id of p.skills) {
+    const s = SKILL_MAP.get(id);
+    if (!s) continue;
+    for (const [k, v] of Object.entries(s.attrBonus)) {
+      power += (v ?? 0) * (k === 'strength' ? 1.0 : k === 'agility' ? 0.9 : 0.7);
+    }
+  }
+  return power;
+}
+
+/** 玩家当前最强武功(用于战斗招式与面板) */
+export function signatureSkillOf(p: Player): Skill | null {
+  let best: Skill | null = null;
+  for (const id of p.skills) {
+    const s = SKILL_MAP.get(id);
+    if (!s) continue;
+    if (!best) { best = s; continue; }
+    const score = (x: Skill) => Object.values(x.attrBonus).reduce((a, b) => a + (b ?? 0), 0);
+    if (score(s) > score(best)) best = s;
+  }
+  return best;
+}
+
+/** 玩家战力(基础属性 + 武器 + 武功加成) */
 function playerPower(p: Player): number {
   let power = combatPower(p.attrs);
   if (p.weaponId) {
@@ -101,8 +132,26 @@ function playerPower(p: Player): number {
       power += bonus;
     }
   }
-  power += p.skills.length * 4 + p.level * 3;
+  power += skillPower(p) + p.level * 3;
   return power;
+}
+
+/** 尝试习得一门武功:成功则加属性并入 skills,返回描述;已会/门槛不足返回 null */
+export function learnSkill(p: Player, skillId: string): { text: string; skill: Skill } | null {
+  if (p.skills.includes(skillId)) return null;
+  const skill = SKILL_MAP.get(skillId);
+  if (!skill) return null;
+  if (!canLearn(p.attrs, skill)) return null;
+  p.skills.push(skillId);
+  for (const [k, v] of Object.entries(skill.attrBonus)) {
+    const key = k as keyof Attributes;
+    p.attrs[key] = Math.max(0, (p.attrs[key] ?? 0) + (v ?? 0));
+  }
+  // 根骨提升也带动气血上限
+  const oldMax = p.maxHp;
+  p.maxHp = maxHpOf(p);
+  if (p.maxHp > oldMax) p.hp += p.maxHp - oldMax;
+  return { text: `习得【${skill.name}】(${SKILL_KIND_LABELS[skill.kind]})——${skill.desc}`, skill };
 }
 
 function playerDefense(p: Player): number {
@@ -161,6 +210,18 @@ export function exec(state: MudState, cmd: Command, seed?: number): MudState {
     case 'explore': {
       const room = getRoom(p.roomId);
       push(state, `你在${room.name}四处探寻……`, 'info');
+      // 断魂崖:偶有顿悟绝世武功(不再遭遇怪物时才有空灵悟道)
+      if (p.roomId === 'duan-hun-ya' && !state.combat) {
+        const learnable = SKILLS.filter((s) => !p.skills.includes(s.id) && canLearn(p.attrs, s));
+        if (learnable.length > 0 && rng.next() < 0.35) {
+          const pick = learnable[Math.floor(rng.next() * learnable.length)]!;
+          const r = learnSkill(p, pick.id);
+          if (r) {
+            push(state, `崖顶罡风猎猎,石碑剑痕森然。你静心体悟前贤剑意,竟有所悟——${r.text}`, 'good');
+            break;
+          }
+        }
+      }
       maybeEncounter(state, rng, true);
       break;
     }
@@ -239,9 +300,10 @@ export function exec(state: MudState, cmd: Command, seed?: number): MudState {
 
 function statusText(p: Player): string {
   const a = p.attrs;
+  const skillNames = p.skills.map((id) => SKILL_MAP.get(id)?.name ?? id);
   return `【${p.name}】 Lv.${p.level} 阅历${p.exp} 气血${p.hp}/${p.maxHp} 银两${p.gold}` +
     `\n臂力${a.strength} 身法${a.agility} 根骨${a.constitution} 悟性${a.wisdom} 福缘${a.luck}` +
-    `\n武器: ${p.weaponId ? ITEMS[p.weaponId]?.name : '无'}  武功: ${p.skills.length > 0 ? p.skills.length + '门' : '无'}` +
+    `\n武器: ${p.weaponId ? ITEMS[p.weaponId]?.name : '无'}  武功: ${skillNames.length > 0 ? skillNames.join('、') : '无'}` +
     (p.pastLifeTitle ? `\n前世: ${p.pastLifeTitle}` : '');
 }
 
@@ -268,7 +330,9 @@ function combatRound(state: MudState, rng: Rng): void {
   const crit = rng.next() < p.attrs.luck * 0.008;
   if (crit) dmg = Math.round(dmg * 1.8);
   c.monsterHp -= dmg;
-  push(state, `你使出${p.skills.length > 0 ? '精妙招式' : '寻常拳脚'},对${m.name}造成 ${dmg} 点伤害${crit ? '(会心一击!)' : ''}。`, 'combat');
+  const sig = signatureSkillOf(p);
+  const moveText = sig ? `【${sig.name}】` : '寻常拳脚';
+  push(state, `你使出${moveText},对${m.name}造成 ${dmg} 点伤害${crit ? '(会心一击!)' : ''}。`, 'combat');
 
   if (c.monsterHp <= 0) { winCombat(state, rng); return; }
   monsterStrike(state, rng);
@@ -353,14 +417,22 @@ function talkToNpc(state: MudState, npc: { id: string; name: string; kind: strin
       break;
     }
     case 'master': {
-      // 隐士指点:悟性够则获益
-      if (p.attrs.wisdom >= 14 && p.exp >= 10) {
-        p.exp -= 10;
-        p.attrs.wisdom += 1;
-        p.attrs.strength += 1;
-        push(state, `${npc.name}见你根骨清奇,点拨了你几句武学精要,你茅塞顿开。(悟性+1 臂力+1)`, 'good');
+      // 隐士传授武功:从你当前可学的武功里挑一门(优先未学的);悟性越高越能学上乘武功
+      const learnable = SKILLS.filter((s) => !p.skills.includes(s.id) && canLearn(p.attrs, s));
+      if (learnable.length > 0 && p.exp >= 15) {
+        p.exp -= 15;
+        // 随机一门( weighted 偏向上乘,即可学中 attrBonus 总和大的 )
+        const scored = learnable.map((s) => ({ s, score: Object.values(s.attrBonus).reduce((a, b) => a + (b ?? 0), 0) }));
+        scored.sort((a, b) => b.score - a.score);
+        const pick = scored[Math.floor(rng.next() * Math.min(3, scored.length))]!.s;
+        const r = learnSkill(p, pick.id);
+        if (r) {
+          push(state, `${npc.name}见你资质不俗,将独门绝学倾囊相授。你${r.text}`, 'good');
+        }
+      } else if (learnable.length === 0) {
+        push(state, `${npc.name}:你已尽得我所知,江湖之大,去别处寻访更高明的武功吧。`, 'system');
       } else {
-        push(state, `${npc.name}:你阅历尚浅,先去历练历练再来吧。(需悟性≥14 且阅历≥10)`, 'system');
+        push(state, `${npc.name}:你阅历尚浅,武功强求不得。先去历练(需阅历≥15,悟性/臂力等达武功门槛)。`, 'system');
       }
       break;
     }

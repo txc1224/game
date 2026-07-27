@@ -1,4 +1,4 @@
-import { ITEMS } from '@game/mud-core';
+import { ITEMS, SKILL_MAP, SKILL_KIND_LABELS } from '@game/mud-core';
 import type { Player } from '@game/mud-core';
 import { ATTR_LABELS } from '../mud';
 
@@ -39,10 +39,6 @@ export default function PlayerPanel({ player, dead, onUse, onEquip }: PlayerPane
         <span className="stat-label">武器</span>
         <span className="stat-value">{weaponName}</span>
       </div>
-      <div className="stat-row">
-        <span className="stat-label">武功</span>
-        <span className="stat-value">{player.skills.length > 0 ? `${player.skills.length} 门` : '无'}</span>
-      </div>
 
       <div className="hp-bar-wrap">
         <div className="hp-bar-label">
@@ -64,6 +60,26 @@ export default function PlayerPanel({ player, dead, onUse, onEquip }: PlayerPane
           </div>
         ))}
       </div>
+
+      {player.skills.length > 0 && (
+        <>
+          <h3 className="section-title serif" style={{ marginTop: 16 }}>
+            武功
+          </h3>
+          <div className="skill-list">
+            {player.skills.map((id) => {
+              const s = SKILL_MAP.get(id);
+              if (!s) return null;
+              return (
+                <span key={id} className="skill-badge" title={`${SKILL_KIND_LABELS[s.kind]} · ${s.desc}`}>
+                  {s.name}
+                  <em>{SKILL_KIND_LABELS[s.kind]}</em>
+                </span>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <h3 className="section-title serif" style={{ marginTop: 18 }}>
         背包

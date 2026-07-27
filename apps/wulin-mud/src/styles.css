@@ -520,3 +520,27 @@ body {
 .guide-expand { color: #c9b98a; font-size: 12px; }
 .guide-done { border-color: rgba(125, 211, 138, 0.4); }
 .guide-done-text { color: #7dd38a; font-size: 13px; line-height: 1.6; }
+
+/* ===== 武功徽章 ===== */
+.skill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.skill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #a142f4;
+  color: #c998f5;
+  white-space: nowrap;
+}
+.skill-badge em {
+  font-style: normal;
+  font-size: 11px;
+  color: #8a8f98;
+}
