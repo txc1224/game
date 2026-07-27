@@ -2,12 +2,14 @@
 
 一个承载多款小游戏 / demo 的 monorepo。React 前端 + Node(Fastify)后端 + SQLite 数据库,本地即可跑通最小闭环。共享的游戏逻辑放在 `packages/game-core`,前后端复用同一份。
 
+> **当前默认:本地单机模式。** 前端在浏览器内直接运行 `game-core` 引擎,历代人生存 `localStorage`,**无需启动后端**。`pnpm --filter @game/life-restart dev` 一条命令即可游玩。后端 `apps/api` 代码完整保留,可随时切回联网模式(见下文「本地 vs 联网」)。
+
 ## 技术栈
 - **Monorepo**: pnpm workspaces + Turborepo
-- **后端**: Node + Fastify(端口 3001)
-- **数据库**: SQLite(better-sqlite3,零配置单文件,`apps/api/data/life.db`)
 - **前端**: React 18 + Vite + TypeScript(开发端口 5173,被占用则自动顺延)
-- **共享逻辑**: `@game/game-core`(词条 / 属性 / 剧本事件 / 推进引擎,纯函数、带单测)
+- **共享逻辑**: `@game/game-core`(词条 / 属性 / 剧本事件 / 武功 / 推进引擎,纯函数、带单测)
+- **后端(保留,可选)**: Node + Fastify(端口 3001)
+- **数据库(保留,可选)**: SQLite(better-sqlite3,`apps/api/data/life.db`)
 
 ## 目录结构
 ```
@@ -28,16 +30,18 @@ game/
     tsconfig/       # 共享 TS 配置
 ```
 
-## 快速开始
+## 快速开始(本地单机模式,推荐)
 ```bash
-pnpm install        # 安装依赖(首次会自动编译 better-sqlite3 原生模块)
-pnpm dev            # 并行启动 api(3001) + web(5173/5174)
+pnpm install                          # 安装依赖
+pnpm --filter @game/life-restart dev  # 只起前端,打开 http://localhost:5173 即玩
 ```
-然后打开前端地址(见终端输出,通常是 http://localhost:5173,被占用则 5174)。
+无需后端、无需数据库,词条/推进/结局全在浏览器内计算,历代人生存 `localStorage`。
 
-前端通过 Vite proxy 把 `/api` 转发到 3001,无需关心端口。
+### 本地 vs 联网(后端保留)
+- **本地单机(默认)**: 前端直连 `src/local-engine.ts`,在浏览器跑 `game-core`。
+- **联网模式(可选)**: 后端 `apps/api`(Fastify + SQLite)完整保留。切回方式:把 `apps/life-restart/src/api.ts` 顶部的 re-export 换成文件底部注释里的 HTTP 实现,再 `pnpm dev`(同时起 api + web)。详见该文件注释。
 
-> **想让别人也能玩?** 见 [DEPLOY.md](DEPLOY.md) —— 后端 Render(含 SQLite 持久化) + 前端 Vercel,免费托管。
+> **想让别人也能玩?** 见 [DEPLOY.md](DEPLOY.md)。单机模式下前端是纯静态产物,`pnpm --filter @game/life-restart build` 的 `dist/` 可直接丢 GitHub Pages / Vercel(此时历代人生存在每个访客自己的浏览器里)。
 
 ## 常用命令
 ```bash
