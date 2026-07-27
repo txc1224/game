@@ -15,20 +15,24 @@
 ```
 game/
   apps/
-    api/            # Fastify 服务 + SQLite 持久化
-      src/index.ts  # 路由
-      src/store.ts  # 对局会话存储 + 结局落库
-      src/db.ts     # SQLite 建表
+    portal/         # 游戏合集导航页(部署到 Pages 根)
     life-restart/   # 《人生重开模拟器》React 前端
+    wulin-mud/      # 《武林群侠传》文字 MUD React 前端
+    api/            # (可选,保留)Fastify 服务 + SQLite
   packages/
-    game-core/      # 游戏核心逻辑(前后端共用)
-      src/traits.ts     # 词条表(5 档稀有度 + 权重)
-      src/attributes.ts # 六维属性 + 加点
-      src/events.ts     # 「少年仗剑江湖路」剧本事件
-      src/engine.ts     # 抽词条 / 逐年推进 / 结局结算
-      test/             # vitest 单测
+    game-core/      # 武侠核心逻辑: 词条/六维属性/武功/剧本事件/推进引擎
+    mud-core/       # MUD 逻辑: 世界地图/回合战斗/探索/物品/彩蛋(复用 game-core)
     tsconfig/       # 共享 TS 配置
 ```
+
+## 游戏
+| 游戏 | 类型 | 本地启动 |
+|---|---|---|
+| **江湖集**(合集页) | 导航 | `pnpm --filter @game/portal dev` → :5175 |
+| **人生重开模拟器** | 文字模拟 | `pnpm --filter @game/life-restart dev` → :5173 |
+| **武林群侠传** | 文字 MUD | `pnpm --filter @game/wulin-mud dev` → :5174 |
+
+**联动彩蛋**:玩过《人生重开》后,《武林群侠传》开局会读取你的前世结局(localStorage),化作今生的属性加持。
 
 ## 快速开始(本地单机模式,推荐)
 ```bash
