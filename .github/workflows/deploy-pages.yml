@@ -34,18 +34,39 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Build game-core
-        run: pnpm --filter @game/game-core build
+      - name: Build shared packages
+        run: |
+          pnpm --filter @game/game-core build
+          pnpm --filter @game/mud-core build
 
-      - name: Build web (base=/game/)
-        run: pnpm --filter @game/life-restart build
+      # 各 app 部署到 Pages 下的子路径,合集页在根
+      - name: Build portal (base=/game/)
+        run: pnpm --filter @game/portal build
         env:
           VITE_BASE: /game/
+
+      - name: Build life-restart (base=/game/life-restart/)
+        run: pnpm --filter @game/life-restart build
+        env:
+          VITE_BASE: /game/life-restart/
+
+      - name: Build wulin-mud (base=/game/wulin-mud/)
+        run: pnpm --filter @game/wulin-mud build
+        env:
+          VITE_BASE: /game/wulin-mud/
+
+      # 组装站点:根=合集页,子目录=各游戏
+      - name: Assemble site
+        run: |
+          mkdir -p public/life-restart public/wulin-mud
+          cp -r apps/portal/dist/* public/
+          cp -r apps/life-restart/dist/* public/life-restart/
+          cp -r apps/wulin-mud/dist/* public/wulin-mud/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/life-restart/dist
+          path: public
 
   deploy:
     needs: build
