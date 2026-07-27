@@ -135,8 +135,8 @@ function LiveStage({
           ...prev,
           age: result.age,
           attrs: result.attrs,
-          // 后端每年会下发新的可分配点数;死亡/完结后清零
-          pendingPoints: result.dead || result.finished ? 0 : prev.pendingPoints,
+          // 后端每年回充可分配点数并回传;死亡/完结后归零
+          pendingPoints: result.dead || result.finished ? 0 : result.pendingPoints,
           timeline: [
             ...prev.timeline,
             {

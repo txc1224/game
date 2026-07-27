@@ -101,7 +101,7 @@ export const store = {
     }
   },
 
-  advance(lifeId: string, alloc: Allocation): YearResult & { lifeId: string } {
+  advance(lifeId: string, alloc: Allocation): YearResult & { lifeId: string; pendingPoints: number } {
     const sess = loadSession(lifeId);
     if (!sess) throw Object.assign(new Error('对局不存在'), { statusCode: 404 });
     if (sess.completed || sess.state.finished) {
@@ -135,7 +135,7 @@ export const store = {
       });
     }
     saveSession(lifeId, sess.state, finished);
-    return { ...result, lifeId };
+    return { ...result, lifeId, pendingPoints: sess.state.pendingPoints };
   },
 
   listLives(): LifeRow[] {

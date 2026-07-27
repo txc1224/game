@@ -96,8 +96,8 @@ export function startLife(input: {
   });
 }
 
-/** POST /api/life/advance —— 返回 YearResult 外加 lifeId */
-export type AdvanceData = YearResult & { lifeId: string };
+/** POST /api/life/advance —— 返回 YearResult 外加 lifeId 与回充后的可分配点数 */
+export type AdvanceData = YearResult & { lifeId: string; pendingPoints: number };
 
 export function advanceLife(lifeId: string, alloc?: Allocation): Promise<AdvanceData> {
   return request<AdvanceData>('/api/life/advance', {
