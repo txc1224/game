@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ATTR_LABELS, ATTR_KEYS, RARITY_COLORS, RARITY_LABELS } from '@game/game-core';
+import { ATTR_LABELS, ATTR_KEYS, ALLOC_CAP_PER_ATTR, BASE_ATTRS, RARITY_COLORS, RARITY_LABELS } from '@game/game-core';
 import type { Allocation, Attributes, AttrKey, Trait } from '@game/game-core';
 import { rollTraits, startLife } from '../api';
 import type { StartLifeData } from '../api';
@@ -38,13 +38,14 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
   );
   const remaining = initialPoints - spent;
 
-  async function loadTraits() {
+  async function loadTraits(isReroll = false) {
     setLoading(true);
     setError(null);
     try {
       const data = await rollTraits();
       setTraits(data.traits);
-      setRerollLeft(data.rerollLeft);
+      // 后端每次都回满 REROLL_MAX,故刷新次数由前端本地维护:首次装载用后端值,之后递减
+      setRerollLeft((prev) => (isReroll ? Math.max(0, prev - 1) : data.rerollLeft));
       // 默认全选一手词条,允许玩家点选取舍
       setSelected(new Set(data.traits.map((t) => t.id)));
     } catch (e) {
@@ -55,7 +56,7 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
   }
 
   useEffect(() => {
-    void loadTraits();
+    void loadTraits(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -73,6 +74,7 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
       const cur = prev[key] ?? 0;
       const next = cur + delta;
       if (next < 0) return prev;
+      if (next > ALLOC_CAP_PER_ATTR) return prev; // 单项加点上限,与后端一致
       if (delta > 0 && remaining <= 0) return prev;
       const out: Allocation = { ...prev, [key]: next };
       if (next === 0) delete out[key];
@@ -177,7 +179,7 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
           </div>
 
           <div className="center" style={{ marginBottom: 22 }}>
-            <button type="button" className="btn" disabled={rerollLeft <= 0 || loading} onClick={() => void loadTraits()}>
+            <button type="button" className="btn" disabled={rerollLeft <= 0 || loading} onClick={() => void loadTraits(true)}>
               刷新词条{rerollLeft > 0 ? `(剩 ${rerollLeft} 次)` : '(已用完)'}
             </button>
           </div>
@@ -207,16 +209,9 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
   );
 }
 
-/** 以选中词条的加成作为初始面板基准(0 基准 + 词条 attrMod) */
+/** 以基础值 + 选中词条的加成作为初始面板基准 */
 function baseFromTraits(traits: Trait[], selected: Set<string>): Attributes {
-  const base: Attributes = {
-    strength: 0,
-    agility: 0,
-    constitution: 0,
-    wisdom: 0,
-    luck: 0,
-    reputation: 0,
-  };
+  const base: Attributes = { ...BASE_ATTRS };
   for (const t of traits) {
     if (!selected.has(t.id)) continue;
     for (const k of ATTR_KEYS) {

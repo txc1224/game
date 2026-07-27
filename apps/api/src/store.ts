@@ -115,26 +115,29 @@ export const store = {
       throw Object.assign(err instanceof Error ? err : new Error(String(err)), { statusCode: 400 });
     }
 
-    // 持久化当年
-    insertYearStmt.run(lifeId, result.age, result.stage, result.text, JSON.stringify(result.attrs));
-
     const finished = result.finished;
-    if (finished && result.ending) {
-      // 终局:写入 lives 汇总
-      const e = result.ending;
-      insertLifeStmt.run({
-        id: lifeId,
-        name: sess.name || '无名侠客',
-        final_age: e.finalAge,
-        ending_id: e.id,
-        ending_title: e.title,
-        evaluation: e.evaluation,
-        cause: e.cause,
-        traits: JSON.stringify(sess.state.traits),
-        attrs: JSON.stringify(result.attrs),
-      });
-    }
-    saveSession(lifeId, sess.state, finished);
+
+    // 三表写包进单事务:任一步失败整体回滚,避免崩溃/重试产生重复行或主键冲突
+    const persist = db.transaction(() => {
+      insertYearStmt.run(lifeId, result.age, result.stage, result.text, JSON.stringify(result.attrs));
+      if (finished && result.ending) {
+        const e = result.ending;
+        insertLifeStmt.run({
+          id: lifeId,
+          name: sess.name || '无名侠客',
+          final_age: e.finalAge,
+          ending_id: e.id,
+          ending_title: e.title,
+          evaluation: e.evaluation,
+          cause: e.cause,
+          traits: JSON.stringify(sess.state.traits),
+          attrs: JSON.stringify(result.attrs),
+        });
+      }
+      saveSession(lifeId, sess.state, finished);
+    });
+    persist();
+
     return { ...result, lifeId, pendingPoints: sess.state.pendingPoints };
   },
 
