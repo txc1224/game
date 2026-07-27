@@ -3,6 +3,7 @@ import type {
   Attributes,
   Ending,
   EventContext,
+  HeirInfo,
   RolledTraits,
   StageId,
   Trait,
@@ -21,6 +22,7 @@ import {
   renownScore,
 } from './attributes.js';
 import { checkSuddenDeath, pickEvent } from './events.js';
+import { getSkill } from './skills.js';
 
 export interface EngineOptions {
   rng?: Rng;
@@ -51,6 +53,18 @@ export interface LifeState {
   dead: boolean;
   finished: boolean;
   ending?: Ending;
+  /** 已修习的武功 id */
+  skills: Set<string>;
+  /** 仇敌 */
+  enemies: string[];
+  /** 盟友/结拜/门派 */
+  allies: string[];
+  /** 配偶名 */
+  spouse?: string;
+  /** 子嗣 */
+  heirs: HeirInfo[];
+  /** 灵兽/宠物 */
+  pet?: string;
 }
 
 /** 按稀有度先定档、再在档内按权重二次随机,抽 count 条互不重复的词条 */
@@ -105,6 +119,10 @@ export function startLife(
     history: [],
     dead: false,
     finished: false,
+    skills: new Set(),
+    enemies: [],
+    allies: [],
+    heirs: [],
   };
 }
 
@@ -145,18 +163,26 @@ export function advanceYear(state: LifeState, alloc: Allocation = {}, opts?: Eng
     flags: state.flags,
     lifespanDelta: state.lifespanDelta,
     history: state.history,
+    skills: state.skills,
+    enemies: state.enemies,
+    allies: state.allies,
+    spouse: state.spouse,
+    heirs: state.heirs,
+    pet: state.pet,
   };
 
-  // 3) 选事件并结算
+  // 3) 选事件并结算(run 一次性完成叙事与结算)
   const evt = pickEvent(ctx, rng);
-  const text = evt.text(ctx, rng);
-  const gained = evt.effect(ctx, rng);
+  const { text, flags: gained } = evt.run(ctx, rng);
   for (const f of gained) {
     state.flags.add(f);
     state.history.push(f);
   }
   state.attrs = ctx.attrs; // effect 可能整体替换 attrs
   state.lifespanDelta = ctx.lifespanDelta;
+  // 回写新维度(ctx 与 state 共享引用,数组/Set 原地可变;标量字段显式同步)
+  state.spouse = ctx.spouse;
+  state.pet = ctx.pet;
 
   // 4) 死亡判定:寿终 or 横祸。寿元以开局根骨定下的 baseLifespan 为准,后续根骨增减不影响寿命。
   //    但根骨亏空会逐年侵蚀寿元(身体垮了),表现为缓慢折寿而非暴毙。
@@ -205,6 +231,16 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
   const f = state.flags;
   const finalAge = state.age;
 
+  // 习武成果与传承(附加到每个结局上)
+  const skills = [...state.skills].map((id) => {
+    try { return getSkill(id).name; } catch { return id; }
+  });
+  const legacy = buildLegacy(state);
+  const extra: Pick<Ending, 'skills' | 'legacy'> = {
+    ...(skills.length > 0 ? { skills } : {}),
+    ...(legacy ? { legacy } : {}),
+  };
+
   // 早夭
   if (finalAge < 18) {
     return {
@@ -213,6 +249,7 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你年仅${finalAge}岁便${cause},江湖梦碎,空留无限怅惘。若有来世,愿你走得长远些。`,
+      ...extra,
     };
   }
 
@@ -225,6 +262,31 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你一生闯荡江湖,却在${finalAge}岁那年${cause}。快意恩仇一场空,只余一声叹息。`,
+      ...extra,
+    };
+  }
+
+  // 毒王(化功大法 + 阴狠路线 + 多门毒/邪功)
+  if (state.skills.has('huagong') && f.has('made-enemies') && state.skills.size >= 3 && a.reputation < 20) {
+    return {
+      id: 'poison-king',
+      title: '毒王',
+      finalAge,
+      cause,
+      evaluation: `你一身化功大法阴狠毒辣,杀人于无形,武林中人闻风丧胆。${finalAge}岁那年${cause},一代毒王就此陨落,江湖人称快亦唏嘘。`,
+      ...extra,
+    };
+  }
+
+  // 剑神(独孤九剑 + 剑道 flag)
+  if (state.skills.has('dugu-sword') && (f.has('sword-master') || f.has('sword-affinity'))) {
+    return {
+      id: 'sword-god',
+      title: '剑神',
+      finalAge,
+      cause,
+      evaluation: `你尽得独孤九剑真传,无招胜有招,破尽天下武学。${finalAge}岁那年${cause},一代剑神归尘,剑道从此绝响。`,
+      ...extra,
     };
   }
 
@@ -236,6 +298,19 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你一生行侠仗义,力挽狂澜,救苍生于水火。${finalAge}岁那年${cause},你的事迹被写入戏文,代代传唱,你已是活着的传奇。`,
+      ...extra,
+    };
+  }
+
+  // 武学宗师(掌握多门上乘武功)
+  if (state.skills.size >= 3) {
+    return {
+      id: 'martial-scholar',
+      title: '武学宗师',
+      finalAge,
+      cause,
+      evaluation: `你博采众长,兼修${skills.slice(0, 3).join('、')}等上乘武学,融会贯通自成一家。${finalAge}岁那年${cause},你的武学为后世所宗。`,
+      ...extra,
     };
   }
 
@@ -247,6 +322,7 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你武学造诣登峰造极,桃李满门,名动天下。${finalAge}岁那年${cause},武林同道无不扼腕,你所开一脉自此香火绵延。`,
+      ...extra,
     };
   }
 
@@ -258,6 +334,7 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你一生与剑为伴,剑道已臻化境,万剑俯首。${finalAge}岁那年${cause},江湖从此少了一位剑中圣手。`,
+      ...extra,
     };
   }
 
@@ -269,6 +346,7 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你快意恩仇,扶危济困,一生光明磊落。${finalAge}岁那年${cause},受过你恩惠的百姓自发为你送行,侠名远播。`,
+      ...extra,
     };
   }
 
@@ -280,6 +358,7 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你隐忍半生,手刃血仇,恩怨两清。${finalAge}岁那年${cause},大仇已报,你走得无牵无挂。`,
+      ...extra,
     };
   }
 
@@ -291,6 +370,7 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你看破红尘,归隐山林,粗茶淡饭度余生。${finalAge}岁那年${cause},一生波澜不惊,倒也自在。`,
+      ...extra,
     };
   }
 
@@ -301,5 +381,24 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
     finalAge,
     cause,
     evaluation: `你在江湖边缘浮沉一生,虽未闯出偌大的名头,却也平安喜乐。${finalAge}岁那年${cause},这一生,值了。`,
+    ...extra,
   };
+}
+
+/** 由子嗣/配偶/盟友生成传承评价(附加到结局) */
+function buildLegacy(state: LifeState): string | undefined {
+  const parts: string[] = [];
+  if (state.spouse) parts.push(`与${state.spouse}白头偕老`);
+  if (state.heirs.length > 0) {
+    const grown = state.heirs.filter((h) => state.age - h.bornAtAge >= 16);
+    const names = state.heirs.map((h) => h.name).join('、');
+    if (grown.length > 0) {
+      parts.push(`膝下${names}已长大成人,继承你的衣钵`);
+    } else {
+      parts.push(`留下幼子${names},尚在襁褓`);
+    }
+  }
+  if (state.allies.length > 0) parts.push(`与${state.allies.join('、')}结为生死之交`);
+  if (parts.length === 0) return undefined;
+  return parts.join(';') + '。';
 }

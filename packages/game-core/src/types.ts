@@ -50,6 +50,29 @@ export interface EventContext {
   lifespanDelta: number;
   /** 经历过的重大事件(供结局评价引用) */
   history: string[];
+  /** 已修习的武功 id */
+  skills: Set<string>;
+  /** 仇敌(结下梁子的对象) */
+  enemies: string[];
+  /** 盟友/结拜/门派 */
+  allies: string[];
+  /** 配偶名(若有) */
+  spouse?: string;
+  /** 子嗣 */
+  heirs: HeirInfo[];
+  /** 灵兽/宠物(奇遇) */
+  pet?: string;
+}
+
+/** 子嗣信息 */
+export interface HeirInfo {
+  name: string;
+  /** 出生那年(主角年龄) */
+  bornAtAge: number;
+  /** 继承的属性加成(出生即定) */
+  bonusAttrs: Partial<Attributes>;
+  /** 继承的词条 flag(若有) */
+  inheritedFlag?: string;
 }
 
 /** 推进一年的产出 */
@@ -84,6 +107,10 @@ export interface Ending {
   finalAge: number;
   /** 死因或善终说明 */
   cause: string;
+  /** 习武成果(掌握的武功名) */
+  skills?: string[];
+  /** 子嗣传承说明(若有) */
+  legacy?: string;
 }
 
 /** 开局接口返回的一手词条 */

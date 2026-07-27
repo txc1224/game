@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   advanceYear,
+  getSkill,
   getTrait,
   rollTraits,
   startLife,
@@ -55,20 +56,29 @@ const getLifeStmt = db.prepare('SELECT * FROM lives WHERE id = ?');
 const getYearsStmt = db.prepare('SELECT * FROM life_years WHERE life_id = ? ORDER BY age ASC, id ASC');
 
 // —— 序列化:LifeState 的 flags 是 Set,需转数组 ——
-interface SerializedState extends Omit<LifeState, 'flags' | 'ending'> {
+// —— 序列化:LifeState 的 flags/skills 是 Set,需转数组 ——
+interface SerializedState extends Omit<LifeState, 'flags' | 'skills' | 'ending'> {
   flags: string[];
+  skills: string[];
   ending?: LifeState['ending'];
 }
 
 function serializeState(s: LifeState): string {
-  const { flags, ...rest } = s;
-  const out: SerializedState = { ...rest, flags: [...flags] };
+  const { flags, skills, ...rest } = s;
+  const out: SerializedState = { ...rest, flags: [...flags], skills: [...skills] };
   return JSON.stringify(out);
 }
 
 function deserializeState(json: string): LifeState {
   const parsed = JSON.parse(json) as SerializedState;
-  return { ...parsed, flags: new Set(parsed.flags) };
+  return {
+    ...parsed,
+    flags: new Set(parsed.flags),
+    skills: new Set(parsed.skills ?? []),
+    enemies: parsed.enemies ?? [],
+    allies: parsed.allies ?? [],
+    heirs: parsed.heirs ?? [],
+  };
 }
 
 function loadSession(id: string): { state: LifeState; name: string; completed: boolean } | null {
@@ -101,7 +111,19 @@ export const store = {
     }
   },
 
-  advance(lifeId: string, alloc: Allocation): YearResult & { lifeId: string; pendingPoints: number } {
+  advance(
+    lifeId: string,
+    alloc: Allocation,
+  ): YearResult & {
+    lifeId: string;
+    pendingPoints: number;
+    skills: string[];
+    spouse?: string;
+    pet?: string;
+    heirs: LifeState['heirs'];
+    enemyCount: number;
+    allyCount: number;
+  } {
     const sess = loadSession(lifeId);
     if (!sess) throw Object.assign(new Error('对局不存在'), { statusCode: 404 });
     if (sess.completed || sess.state.finished) {
@@ -138,7 +160,22 @@ export const store = {
     });
     persist();
 
-    return { ...result, lifeId, pendingPoints: sess.state.pendingPoints };
+    const st = sess.state;
+    const skillNames = [...st.skills].map((id) => {
+      try { return getSkill(id).name; } catch { return id; }
+    });
+    return {
+      ...result,
+      lifeId,
+      pendingPoints: st.pendingPoints,
+      // 供前端展示的新维度
+      skills: skillNames,
+      spouse: st.spouse,
+      pet: st.pet,
+      heirs: st.heirs,
+      enemyCount: st.enemies.length,
+      allyCount: st.allies.length,
+    };
   },
 
   listLives(): LifeRow[] {

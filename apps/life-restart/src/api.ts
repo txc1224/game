@@ -96,8 +96,26 @@ export function startLife(input: {
   });
 }
 
-/** POST /api/life/advance —— 返回 YearResult 外加 lifeId 与回充后的可分配点数 */
-export type AdvanceData = YearResult & { lifeId: string; pendingPoints: number };
+/** 子嗣信息(与 game-core HeirInfo 对齐) */
+export interface HeirInfo {
+  name: string;
+  bornAtAge: number;
+  bonusAttrs: Partial<Attributes>;
+  inheritedFlag?: string;
+}
+
+/** POST /api/life/advance —— YearResult 外加 lifeId、回充点数与人物近况 */
+export type AdvanceData = YearResult & {
+  lifeId: string;
+  pendingPoints: number;
+  /** 已习得武功名 */
+  skills: string[];
+  spouse?: string;
+  pet?: string;
+  heirs: HeirInfo[];
+  enemyCount: number;
+  allyCount: number;
+};
 
 export function advanceLife(lifeId: string, alloc?: Allocation): Promise<AdvanceData> {
   return request<AdvanceData>('/api/life/advance', {

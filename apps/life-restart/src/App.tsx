@@ -19,6 +19,13 @@ interface LiveState {
   pendingPoints: number;
   timeline: TimelineEntry[];
   chosenTraits: Trait[];
+  /** 近况:武功/家室/灵宠/仇敌 */
+  skills: string[];
+  spouse?: string;
+  pet?: string;
+  heirs: { name: string; bornAtAge: number }[];
+  enemyCount: number;
+  allyCount: number;
 }
 
 export default function App() {
@@ -44,6 +51,10 @@ export default function App() {
       pendingPoints: data.pendingPoints,
       timeline: [],
       chosenTraits,
+      skills: [],
+      heirs: [],
+      enemyCount: 0,
+      allyCount: 0,
     });
     setEnding(null);
     setShowHistory(false);
@@ -137,6 +148,13 @@ function LiveStage({
           attrs: result.attrs,
           // 后端每年回充可分配点数并回传;死亡/完结后归零
           pendingPoints: result.dead || result.finished ? 0 : result.pendingPoints,
+          // 同步近况
+          skills: result.skills ?? prev.skills,
+          spouse: result.spouse ?? prev.spouse,
+          pet: result.pet ?? prev.pet,
+          heirs: result.heirs ?? prev.heirs,
+          enemyCount: result.enemyCount ?? prev.enemyCount,
+          allyCount: result.allyCount ?? prev.allyCount,
           timeline: [
             ...prev.timeline,
             {
@@ -196,12 +214,44 @@ function LiveStage({
               {advancing ? '岁月流转……' : '再活一年'}
             </button>
           </div>
+
+          <StatusCard live={live} />
         </div>
 
         <div>
           <h2 className="section-title serif">人生流年</h2>
           <YearTimeline entries={live.timeline} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** 人物近况:武功 / 家室 / 灵宠 / 恩怨 */
+function StatusCard({ live }: { live: LiveState }) {
+  const hasAnything =
+    live.skills.length > 0 || live.spouse || live.pet || live.heirs.length > 0 || live.enemyCount > 0 || live.allyCount > 0;
+  if (!hasAnything) return null;
+  return (
+    <div className="card" style={{ marginTop: 18, padding: 14 }}>
+      {live.skills.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>武功</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {live.skills.map((s) => (
+              <span key={s} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 999, border: '1px solid #a142f4', color: '#c998f5', whiteSpace: 'nowrap' }}>
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', fontSize: 13, color: '#c2c7ce' }}>
+        {live.spouse && <div>道侣 · <span style={{ color: '#e6c07a' }}>{live.spouse}</span></div>}
+        {live.heirs.length > 0 && <div>子嗣 · <span style={{ color: '#e6c07a' }}>{live.heirs.map((h) => h.name).join('、')}</span></div>}
+        {live.pet && <div>灵宠 · <span style={{ color: '#7dd38a' }}>{live.pet}</span></div>}
+        {live.allyCount > 0 && <div>结义 · <span style={{ color: '#8ab4f8' }}>{live.allyCount} 人</span></div>}
+        {live.enemyCount > 0 && <div>仇敌 · <span style={{ color: '#e07a7a' }}>{live.enemyCount} 人</span></div>}
       </div>
     </div>
   );

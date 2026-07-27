@@ -43,6 +43,25 @@ export function EndingSummary({ ending, timeline, onRestart, onShowHistory }: En
         >
           {ending.evaluation}
         </p>
+
+        {ending.skills && ending.skills.length > 0 && (
+          <div style={{ marginTop: 18 }}>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 8, letterSpacing: 2 }}>毕生所学</div>
+            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 8 }}>
+              {ending.skills.map((s) => (
+                <span key={s} style={{ fontSize: 13, padding: '3px 12px', borderRadius: 999, border: '1px solid #a142f4', color: '#c998f5' }}>
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {ending.legacy && (
+          <p className="serif" style={{ margin: '16px auto 0', maxWidth: 620, fontSize: 14, lineHeight: 1.9, color: '#c9b98a', textAlign: 'center' }}>
+            {ending.legacy}
+          </p>
+        )}
       </div>
 
       <h2 className="section-title serif">生平回顾</h2>
