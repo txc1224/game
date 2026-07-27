@@ -37,6 +37,8 @@ pnpm dev            # 并行启动 api(3001) + web(5173/5174)
 
 前端通过 Vite proxy 把 `/api` 转发到 3001,无需关心端口。
 
+> **想让别人也能玩?** 见 [DEPLOY.md](DEPLOY.md) —— 后端 Render(含 SQLite 持久化) + 前端 Vercel,免费托管。
+
 ## 常用命令
 ```bash
 pnpm dev          # turbo 并行起所有 app 的 dev

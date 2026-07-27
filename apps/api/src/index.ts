@@ -6,11 +6,16 @@ import type { Allocation } from '@game/game-core';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? '0.0.0.0';
+// 允许的前端来源,逗号分隔;不设置则放开(本地开发友好)
+const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 export async function buildServer() {
   const app = Fastify({ logger: { level: 'info' } });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: CORS_ORIGINS.length > 0 ? CORS_ORIGINS : true });
 
   // 统一错误处理
   app.setErrorHandler((err, _req, reply) => {

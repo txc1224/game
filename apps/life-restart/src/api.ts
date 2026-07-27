@@ -1,8 +1,15 @@
 /**
  * 后端 REST 封装。
  * 统一响应格式 { code, message, data },code !== 0 视为业务错误并抛出。
- * 前端一律使用相对路径 /api,由 Vite dev server 代理到后端(见 vite.config.ts)。
+ *
+ * 地址解析:
+ * - 开发:相对路径 /api,由 Vite dev server 代理到后端(见 vite.config.ts)。
+ * - 生产:用 VITE_API_BASE(如 https://your-api.onrender.com)直连后端。
  */
+
+/** 解析 API base:生产环境注入 VITE_API_BASE,开发留空走同源 proxy */
+const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? '';
+
 import type {
   Allocation,
   Attributes,
@@ -32,7 +39,7 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(path, {
+    res = await fetch(`${API_BASE}${path}`, {
       headers: { 'Content-Type': 'application/json' },
       ...init,
     });
