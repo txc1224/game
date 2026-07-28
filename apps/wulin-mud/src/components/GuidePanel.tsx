@@ -3,7 +3,7 @@ import type { MudState } from '@game/mud-core';
 
 interface GuidePanelProps {
   state: MudState;
-  onGo: (dir: 'east' | 'west') => void;
+  onGo: (dir: 'east' | 'west' | 'north' | 'south') => void;
   onSimple: (type: 'explore' | 'attack' | 'rest' | 'status') => void;
   onTalk: (npcId: string) => void;
 }
@@ -12,81 +12,76 @@ interface Step {
   key: string;
   title: string;
   hint: string;
-  /** 是否已完成 */
   done: (s: MudState) => boolean;
-  /** 可点动作(未完成时显示) */
   action?: { label: string; run: () => void; disabled?: boolean };
 }
 
+/** 日志中是否出现过某关键串(判定「该动作曾发生」,不随当前位置回退) */
+const saw = (s: MudState, ...keys: string[]): boolean =>
+  s.log.some((l) => keys.some((k) => l.text.includes(k)));
+
 /**
- * 新手引导任务:带领玩家走完「移动→探索→战斗→拾取→回村疗伤」的完整闭环。
- * 依据当前 game state 实时判断进度;全部完成后自动收起为一条提示。
+ * 新手引导任务:移动→探索→战斗→拾取→回村→安顿 闭环。
+ * 每步用「日志中该步专属动作是否发生」判定,而非全局 exp/level,避免跨场景提前勾掉或卡死。
  */
 export default function GuidePanel({ state, onGo, onSimple, onTalk }: GuidePanelProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const p = state.player;
-
-  // 回村后是否做过「安顿」操作(疗伤/卖货/休息/查看状态)——从日志里检测。
-  // 注意:exec 是就地修改 log 数组,引用不变,故依赖 state 本身(每次 setState 浅拷贝出新引用)。
-  const settled = useMemo(
-    () =>
-      state.log.some(
-        (l) =>
-          l.text.includes('气血尽复') ||
-          l.text.includes('得银') ||
-          l.text.includes('好好休息') ||
-          l.text.includes('【' + p.name + '】'), // status 输出以【名字】开头
-      ),
-    [state, p.name],
-  );
+  const inCombat = state.combat !== null;
+  const inVillage = state.player.roomId === 'qingxi-cun';
 
   const steps: Step[] = useMemo(
     () => [
       {
-        key: 'go-east',
-        title: '走出村子,前往青山',
-        hint: '点左侧「东」出口,或直接输入「东」。',
-        // 判定「曾经到达过青山」(而非当前不在村),避免回村后该步回退
-        done: (s) => s.log.some((l) => l.text.includes('来到【青山】')),
-        action: { label: '往东走', run: () => onGo('east'), disabled: state.combat !== null || state.dead },
+        key: 'leave',
+        title: '走出村子,去外面闯荡',
+        hint: '点方位盘的「东」去青山,或「北」去忘忧谷。',
+        // 离开青溪村到任意相邻区(东或北都行),日志里有「来到【xx】」
+        done: (s) => saw(s, '来到【青山】', '来到【忘忧谷】'),
+        action: { label: '往东走', run: () => onGo('east'), disabled: inCombat || state.dead },
       },
       {
         key: 'explore',
-        title: '在青山探索,寻一只野兽练手',
-        hint: '点「探索」,或输入「探索」。',
-        done: (s) => s.combat !== null || s.player.exp > 0 || s.player.level > 1,
-        action: { label: '探索', run: () => onSimple('explore'), disabled: state.combat !== null || state.dead || p.roomId === 'qingxi-cun' },
+        title: '在野外探索,寻一只野兽练手',
+        hint: '点「探索」,或在命令区点「探索」。',
+        // 探索后遭遇怪物(日志有「遭遇【」)或已胜利
+        done: (s) => saw(s, '遭遇【') || saw(s, '你击败了'),
+        action: { label: '探索', run: () => onSimple('explore'), disabled: inCombat || state.dead || inVillage },
       },
       {
         key: 'fight',
         title: '迎战!点「攻击」击败对手',
-        hint: '遭遇野兽后,点「攻击」与它过招;不敌可「逃跑」。',
-        done: (s) => s.player.exp > 0 || s.player.level > 1,
-        action: { label: '攻击', run: () => onSimple('attack'), disabled: state.combat === null || state.dead },
+        hint: '遭遇野兽后点「攻击」过招;不敌可「逃跑」。',
+        // 击败过怪物(日志有「你击败了【」)
+        done: (s) => saw(s, '你击败了【'),
+        action: { label: '攻击', run: () => onSimple('attack'), disabled: !inCombat || state.dead },
       },
       {
         key: 'loot',
         title: '查看战利品与自身状态',
         hint: '左侧背包能看到拾取的东西;点「状态」查看气血与阅历。',
-        done: (s) => s.player.exp > 0,
+        // 拾取过(日志有「拾取:【」)或查看过状态(日志有「【名字】 Lv」)
+        done: (s) => saw(s, '拾取:【') || saw(s, `【${state.player.name}】 Lv`),
+        action: { label: '查看状态', run: () => onSimple('status'), disabled: state.dead },
       },
       {
         key: 'return',
-        title: '带着战利品,回青溪村',
-        hint: '点「西」回村。村里是安全区,可以疗伤、卖货、休息。',
-        done: (s) => s.player.exp > 0 && s.log.some((l) => l.text.includes('来到【青溪村】')),
-        action: { label: '往西回村', run: () => onGo('west'), disabled: state.combat !== null || state.dead },
+        title: '带着收获,回青溪村',
+        hint: '点方位盘「西」回村。村里是安全区,可以疗伤、卖货、休息。',
+        // 击败过怪 且 回到过青溪村
+        done: (s) => saw(s, '你击败了【') && saw(s, '来到【青溪村】'),
+        action: { label: '往西回村', run: () => onGo('west'), disabled: inCombat || state.dead },
       },
       {
-        key: 'heal',
-        title: '回村安顿:疗伤/卖货/查看状态',
-        hint: '受了伤点「老郎中」;有杂物点「杂货铺」卖钱;点「状态」看看这一战的成长。',
-        // 回村后做过任意一项安顿操作(疗伤/卖货/休息/查看状态)才算完成
-        done: (s) => s.player.exp > 0 && s.log.some((l) => l.text.includes('来到【青溪村】')) && settled,
-        action: { label: '查看状态', run: () => onSimple('status'), disabled: state.dead },
+        key: 'settle',
+        title: '回村安顿:疗伤/卖货/休息',
+        hint: '受了伤点「老郎中」;有杂物点「杂货铺」卖钱;也能「休息」恢复。',
+        // 回村后做过安顿操作(疗伤/卖货/休息)
+        done: (s) =>
+          saw(s, '你击败了【') && saw(s, '来到【青溪村】') && saw(s, '气血尽复', '得银', '好好休息'),
+        action: { label: '对话老郎中', run: () => onTalk('lang-zhong'), disabled: inCombat || state.dead || !inVillage },
       },
     ],
-    [state, onGo, onSimple, p.roomId],
+    [state, onGo, onSimple, onTalk, inCombat, inVillage],
   );
 
   const doneCount = steps.filter((s) => s.done(state)).length;

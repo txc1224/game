@@ -6,6 +6,7 @@ import PlayerPanel from './components/PlayerPanel';
 import RoomPanel from './components/RoomPanel';
 import CommandBar from './components/CommandBar';
 import GuidePanel from './components/GuidePanel';
+import MiniMap from './components/MiniMap';
 import { parseCommand } from './mud';
 
 const SAVE_KEY = 'wulin-mud:save';
@@ -120,6 +121,7 @@ export default function App() {
 
       <div className="main-grid">
         <div className="side-col">
+          <MiniMap state={state} onGo={handleGo} />
           <PlayerPanel player={state.player} dead={state.dead} onUse={handleUse} onEquip={handleEquip} />
           <RoomPanel
             roomId={state.player.roomId}

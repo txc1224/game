@@ -566,3 +566,118 @@ body {
   font-size: 11px;
   color: #8a8f98;
 }
+
+/* ===== 方位盘 ===== */
+.compass {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, auto);
+  gap: 6px;
+  grid-template-areas:
+    '. n .'
+    'w c e'
+    '. s .';
+  margin: 14px 0;
+}
+.compass-n { grid-area: n; }
+.compass-w { grid-area: w; }
+.compass-e { grid-area: e; }
+.compass-s { grid-area: s; }
+.compass-center {
+  grid-area: c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px dashed rgba(232, 217, 168, 0.3);
+  background: rgba(232, 217, 168, 0.05);
+}
+.compass-center-dot { color: #e8d9a8; font-size: 16px; }
+.compass-center-label { font-size: 11px; color: #c9b98a; letter-spacing: 1px; margin-top: 2px; }
+.compass-cell { display: flex; }
+.compass-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #c2c7ce;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 56px;
+  transition: all 0.15s ease;
+}
+.compass-btn.has-exit {
+  border-color: rgba(184, 155, 94, 0.5);
+  color: #f0e6c8;
+}
+.compass-btn.has-exit:hover {
+  background: rgba(184, 155, 94, 0.18);
+  border-color: #b89b5e;
+  transform: translateY(-1px);
+}
+.compass-btn.no-exit { opacity: 0.3; cursor: default; }
+.compass-arrow { font-size: 15px; line-height: 1; color: #e8d9a8; }
+.compass-btn.no-exit .compass-arrow { color: #8a8f98; }
+.compass-dir { font-size: 13px; letter-spacing: 1px; }
+.compass-dest { font-size: 10px; color: #9aa0a6; letter-spacing: 0; white-space: nowrap; }
+
+/* ===== 江湖舆图(小地图) ===== */
+.minimap-card { padding: 14px 16px; }
+.minimap {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 8px;
+  margin: 8px 0;
+}
+.minimap-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  color: #c2c7ce;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.minimap-emoji { font-size: 20px; line-height: 1; }
+.minimap-name { font-size: 11px; letter-spacing: 1px; }
+.minimap-you { font-size: 10px; color: #7dd38a; }
+.minimap-node.current {
+  border-color: #e8d9a8;
+  background: rgba(232, 217, 168, 0.12);
+  color: #e8d9a8;
+}
+.minimap-node.reachable {
+  border-color: #b89b5e;
+  box-shadow: 0 0 8px rgba(232, 217, 168, 0.3);
+  animation: mmGlow 1.6s ease-in-out infinite;
+}
+@keyframes mmGlow {
+  0%, 100% { box-shadow: 0 0 6px rgba(232, 217, 168, 0.2); }
+  50% { box-shadow: 0 0 14px rgba(232, 217, 168, 0.5); }
+}
+.minimap-node.reachable:hover { transform: translateY(-2px); background: rgba(184, 155, 94, 0.18); }
+.minimap-node:disabled { cursor: default; }
+.minimap-hint { font-size: 11px; text-align: center; }
+
+/* ===== 命令按钮组 ===== */
+.command-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-ghost { background: transparent; border-color: rgba(255, 255, 255, 0.14); color: #9aa0a6; }
+.cmd-toggle { margin-left: auto; }
+
+@media (max-width: 900px) {
+  .compass-btn { min-height: 52px; }
+  .minimap-node { min-height: 44px; }
+}

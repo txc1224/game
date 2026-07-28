@@ -9,11 +9,43 @@ interface RoomPanelProps {
   onTalk: (npcId: string) => void;
 }
 
-/** 当前区域卡:区域名/描述 + 出口方向按钮 + 可点击对话的 NPC。 */
+/** 方位盘中各方向的位置(3x3 网格) */
+const DIRS: { dir: Direction; area: string; arrow: string }[] = [
+  { dir: 'north', area: 'n', arrow: '↑' },
+  { dir: 'west', area: 'w', arrow: '←' },
+  { dir: 'east', area: 'e', arrow: '→' },
+  { dir: 'south', area: 's', arrow: '↓' },
+];
+
+/** 当前区域卡:区域名/描述 + 3x3 方位盘(带目的地)+ NPC。 */
 export default function RoomPanel({ roomId, dead, inCombat, onGo, onTalk }: RoomPanelProps) {
   const room = getRoom(roomId);
-  const exits = Object.entries(room.exits) as [Direction, string][];
   const npcs = room.npcs ?? [];
+
+  // 各方向的目的地房间名
+  const destName = (dir: Direction): string | null => {
+    const destId = room.exits[dir];
+    return destId ? getRoom(destId).name : null;
+  };
+
+  const dirBtn = (dir: Direction) => {
+    const dest = destName(dir);
+    const has = dest !== null;
+    return (
+      <button
+        key={dir}
+        type="button"
+        className={`compass-btn compass-${dir} ${has ? 'has-exit' : 'no-exit'}`}
+        disabled={dead || inCombat || !has}
+        title={has ? `往${DIR_LABELS[dir]} → ${dest}` : '此向无路'}
+        onClick={() => onGo(dir)}
+      >
+        <span className="compass-arrow">{has ? DIRS.find((d) => d.dir === dir)!.arrow : '·'}</span>
+        <span className="compass-dir">{DIR_LABELS[dir]}</span>
+        {has && <span className="compass-dest">{dest}</span>}
+      </button>
+    );
+  };
 
   return (
     <div className="card">
@@ -23,26 +55,16 @@ export default function RoomPanel({ roomId, dead, inCombat, onGo, onTalk }: Room
       </h3>
       <p className="room-desc">{room.desc}</p>
 
-      <div className="exit-group">
-        <div className="group-label">出口</div>
-        {exits.length === 0 ? (
-          <div className="inv-empty">四面无路。</div>
-        ) : (
-          <div className="btn-flow">
-            {exits.map(([dir]) => (
-              <button
-                key={dir}
-                type="button"
-                className="btn btn-dir"
-                disabled={dead || inCombat}
-                title={inCombat ? '战斗中无法移动' : undefined}
-                onClick={() => onGo(dir)}
-              >
-                {DIR_LABELS[dir]}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* 3x3 方位盘 */}
+      <div className="compass">
+        <div className="compass-cell compass-n">{dirBtn('north')}</div>
+        <div className="compass-cell compass-w">{dirBtn('west')}</div>
+        <div className="compass-cell compass-center">
+          <span className="compass-center-dot">◈</span>
+          <span className="compass-center-label">{room.name}</span>
+        </div>
+        <div className="compass-cell compass-e">{dirBtn('east')}</div>
+        <div className="compass-cell compass-s">{dirBtn('south')}</div>
       </div>
 
       {npcs.length > 0 && (
