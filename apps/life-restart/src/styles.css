@@ -239,3 +239,74 @@ body {
     font-size: 15px;
   }
 }
+
+/* ===== 体验动效 ===== */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(232,217,168,0.3), 0 0 12px rgba(232,217,168,0.15); }
+  50% { box-shadow: 0 0 0 2px rgba(232,217,168,0.6), 0 0 24px rgba(232,217,168,0.4); }
+}
+@keyframes typeCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes traitFlip {
+  from { opacity: 0; transform: rotateY(70deg) scale(0.96); }
+  to { opacity: 1; transform: rotateY(0) scale(1); }
+}
+@keyframes ageGlow {
+  0% { text-shadow: 0 0 0 rgba(232,217,168,0); transform: scale(1); }
+  40% { text-shadow: 0 0 18px rgba(232,217,168,0.8); transform: scale(1.15); }
+  100% { text-shadow: 0 0 0 rgba(232,217,168,0); transform: scale(1); }
+}
+
+/* 时间线最新一条入场 + 重大事件高亮 */
+.timeline-new {
+  animation: fadeInUp 0.5s ease, pulseGold 1.6s ease-in-out 2;
+}
+.timeline-flag {
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid #a142f4;
+  color: #c998f5;
+  white-space: nowrap;
+}
+/* 逐字光标 */
+.type-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #e8d9a8;
+  vertical-align: -2px;
+  margin-left: 2px;
+  animation: typeCursor 0.8s step-end infinite;
+}
+.type-skip-hint {
+  font-size: 11px;
+  color: #8a8f98;
+  margin-top: 4px;
+}
+/* 年龄数字强调 */
+.age-pop {
+  display: inline-block;
+  animation: ageGlow 0.9s ease;
+}
+/* 词条卡翻牌 */
+.trait-grid > * {
+  animation: traitFlip 0.45s ease backwards;
+}
+.trait-grid > *:nth-child(1) { animation-delay: 0.05s; }
+.trait-grid > *:nth-child(2) { animation-delay: 0.15s; }
+.trait-grid > *:nth-child(3) { animation-delay: 0.25s; }
+/* 结局渐次浮现 */
+.ending-stagger > * {
+  animation: fadeInUp 0.6s ease backwards;
+}
+.ending-stagger > *:nth-child(1) { animation-delay: 0.1s; }
+.ending-stagger > *:nth-child(2) { animation-delay: 0.4s; }
+.ending-stagger > *:nth-child(3) { animation-delay: 0.7s; }
+.ending-stagger > *:nth-child(4) { animation-delay: 1.0s; }

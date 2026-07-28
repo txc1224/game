@@ -15,7 +15,7 @@ interface EndingSummaryProps {
 export function EndingSummary({ ending, timeline, onRestart, onShowHistory }: EndingSummaryProps) {
   return (
     <div>
-      <div className="card center" style={{ padding: '36px 24px', marginBottom: 22 }}>
+      <div className="card center ending-stagger" style={{ padding: '36px 24px', marginBottom: 22 }}>
         <div className="muted" style={{ letterSpacing: 4, marginBottom: 8 }}>
           一生落幕
         </div>

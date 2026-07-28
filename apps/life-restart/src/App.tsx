@@ -213,7 +213,7 @@ function LiveStage({
 
         <div>
           <h2 className="section-title serif">人生流年</h2>
-          <YearTimeline entries={live.timeline} />
+          <YearTimeline entries={live.timeline} typewriterLatest />
         </div>
       </div>
     </div>
