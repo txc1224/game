@@ -118,6 +118,20 @@ export default function ProfilePanel() {
             <div className="profile-none">尚未登塔</div>
           )}
         </div>
+
+        {/* 悦来客栈 */}
+        <div className={`profile-card ${profile.inn.played ? '' : 'dim'}`}>
+          <div className="profile-card-head">🏮 悦来客栈</div>
+          {profile.inn.played ? (
+            <ul className="profile-list">
+              <li><span>银两</span><strong className="hl">{profile.inn.silver} 两</strong></li>
+              <li><span>客栈</span><strong>{profile.inn.level} 级</strong></li>
+              <li><span>承办订单</span><strong>{profile.inn.ordersDone} 单</strong></li>
+            </ul>
+          ) : (
+            <div className="profile-none">尚未开张</div>
+          )}
+        </div>
       </div>
 
       <MedalWall profile={profile} freshIds={newUnlocks} />

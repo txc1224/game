@@ -164,6 +164,37 @@ importers:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@20.19.43)
 
+  apps/wuxia-inn:
+    dependencies:
+      '@game/inn-core':
+        specifier: workspace:*
+        version: link:../../packages/inn-core
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
+    devDependencies:
+      '@game/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.7(@types/react@18.3.31)
+      '@vitejs/plugin-react':
+        specifier: ^4.3.4
+        version: 4.7.0(vite@5.4.21(@types/node@20.19.43))
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.21(@types/node@20.19.43)
+
   packages/card-core:
     devDependencies:
       '@game/tsconfig':
@@ -177,6 +208,18 @@ importers:
         version: 2.1.9(@types/node@20.19.43)
 
   packages/game-core:
+    devDependencies:
+      '@game/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@20.19.43)
+
+  packages/inn-core:
     devDependencies:
       '@game/tsconfig':
         specifier: workspace:*

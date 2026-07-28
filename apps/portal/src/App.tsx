@@ -39,6 +39,15 @@ const GAMES: GameCard[] = [
     path: './card-rogue/',
     emoji: '🃏',
   },
+  {
+    id: 'wuxia-inn',
+    title: '悦来客栈',
+    subtitle: '武侠放置经营',
+    desc: '盘下一间小客栈,从一碗阳春面做起。雇伙计、研菜谱、打口碑,引来少林武当的大主顾。离线也有进账,闷声发大财。',
+    tags: ['放置', '经营', '休闲'],
+    path: './wuxia-inn/',
+    emoji: '🏮',
+  },
 ];
 
 export default function App() {

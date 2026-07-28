@@ -27,10 +27,19 @@ export interface CardArchive {
   relics?: number;
 }
 
+export interface InnArchive {
+  played: boolean;
+  silver?: number;
+  renown?: number;
+  level?: number;
+  ordersDone?: number;
+}
+
 export interface Profile {
   life: LifeArchive;
   mud: MudArchive;
   card: CardArchive;
+  inn: InnArchive;
   /** 综合江湖声望(粗略) */
   renown: number;
 }
@@ -118,16 +127,30 @@ function readCard(): CardArchive {
   };
 }
 
+function readInn(): InnArchive {
+  const save = readJson<{ silver: number; renown: number; level: number; ordersDone: string[] }>('wuxia-inn:save');
+  if (!save || typeof save.silver !== 'number') return { played: false };
+  return {
+    played: true,
+    silver: Math.floor(save.silver),
+    renown: save.renown,
+    level: save.level,
+    ordersDone: save.ordersDone?.length ?? 0,
+  };
+}
+
 export function readProfile(): Profile {
   const life = readLife();
   const mud = readMud();
   const card = readCard();
+  const inn = readInn();
   // 综合江湖声望:各项成就的加权和
   let renown = 0;
   if (life.played) renown += (ENDING_RANK[latestEndingId()] ?? 0) * 10 + Math.min(life.lives, 10) * 2;
   if (mud.played) renown += (mud.level ?? 0) * 3 + (mud.skills ?? 0) * 5;
   if (card.played) renown += (card.cleared ? 50 : 0) + (card.floor ?? 0) * 2;
-  return { life, mud, card, renown };
+  if (inn.played) renown += (inn.level ?? 0) * 6 + (inn.ordersDone ?? 0) * 4;
+  return { life, mud, card, inn, renown };
 }
 
 function latestEndingId(): string {
@@ -197,6 +220,16 @@ export const MEDALS: Medal[] = [
     unlocked: (p) => Boolean(p.card.cleared) },
   { id: 'card-relics3', name: '收藏家', desc: '《黑风塔》持有 3 件遗物', emoji: '💎', tier: 'silver',
     unlocked: (p) => (p.card.relics ?? 0) >= 3, progress: (p) => `${p.card.relics ?? 0}/3 件` },
+
+  // —— 悦来客栈 ——
+  { id: 'inn-open', name: '开张大吉', desc: '《悦来客栈》开张经营', emoji: '🏮', tier: 'bronze',
+    unlocked: (p) => p.inn.played },
+  { id: 'inn-lv3', name: '闻名一方', desc: '《悦来客栈》升到 3 级', emoji: '🌆', tier: 'silver',
+    unlocked: (p) => (p.inn.level ?? 0) >= 3, progress: (p) => `${p.inn.level ?? 0}/3 级` },
+  { id: 'inn-lv5', name: '天下第一楼', desc: '《悦来客栈》升到 5 级', emoji: '🏯', tier: 'gold',
+    unlocked: (p) => (p.inn.level ?? 0) >= 5, progress: (p) => `${p.inn.level ?? 0}/5 级` },
+  { id: 'inn-orders3', name: '高朋满座', desc: '《悦来客栈》承办 3 个门派订单', emoji: '🍻', tier: 'silver',
+    unlocked: (p) => (p.inn.ordersDone ?? 0) >= 3, progress: (p) => `${p.inn.ordersDone ?? 0}/3 单` },
 
   // —— 跨游戏 ——
   { id: 'all-played', name: '三修侠客', desc: '三款游戏都玩过', emoji: '⚡', tier: 'silver',
