@@ -110,9 +110,9 @@ export const ROOMS: Record<string, Room> = {
   },
   'duan-hun-ya': {
     id: 'duan-hun-ya', name: '断魂崖',
-    desc: '万丈深渊,罡风凛冽。传说多位高手在此决斗陨落,崖顶石碑刻满剑痕。',
+    desc: '万丈深渊,罡风凛冽。传说多位高手在此决斗陨落,崖顶石碑刻满剑痕。黑风寨主就在崖顶闭关,艺成可前去挑战。',
     exits: { south: 'hei-feng-zhai' },
-    monsters: ['tie-bu-shan', 'jiang-hu-ke', 'hei-feng-zhai-zhu'],
+    monsters: ['tie-bu-shan', 'jiang-hu-ke'],
     encounterRate: 0.7,
   },
 };

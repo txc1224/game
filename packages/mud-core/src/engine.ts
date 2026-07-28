@@ -9,7 +9,7 @@ import {
   type Rng,
   type Skill,
 } from '@game/game-core';
-import { DIR_LABELS, OPPOSITE, getRoom, rollEncounter, ITEMS, type Direction, type Monster, type Room } from './world.js';
+import { DIR_LABELS, OPPOSITE, getRoom, rollEncounter, ITEMS, MONSTERS, type Direction, type Monster, type Room } from './world.js';
 
 /** 玩家状态 */
 export interface Player {
@@ -39,9 +39,11 @@ export interface LogLine {
 export interface MudState {
   player: Player;
   /** 当前战斗(若有) */
-  combat: { monster: Monster; monsterHp: number } | null;
+  combat: { monster: Monster; monsterHp: number; isBoss?: boolean } | null;
   log: LogLine[];
   dead: boolean;
+  /** 主线:是否已击败黑风寨主(通关) */
+  bossDefeated?: boolean;
 }
 
 const BASE_ATTRS: Attributes = { strength: 10, agility: 10, constitution: 10, wisdom: 10, luck: 10, reputation: 0 };
@@ -168,7 +170,8 @@ export type Command =
   | { type: 'equip'; itemId: string }
   | { type: 'talk'; npcId: string }
   | { type: 'rest' }
-  | { type: 'status' };
+  | { type: 'status' }
+  | { type: 'challenge' };
 
 /**
  * 执行一条命令,返回新的日志(直接就地改 state.log,返回本步新增的行数供 UI 滚动)。
@@ -294,6 +297,24 @@ export function exec(state: MudState, cmd: Command, seed?: number): MudState {
       push(state, statusText(p), 'system');
       break;
     }
+    case 'challenge': {
+      if (state.combat) { push(state, '你正在战斗中!', 'bad'); break; }
+      if (p.roomId !== 'duan-hun-ya') {
+        push(state, '黑风寨主在断魂崖顶闭关。去断魂崖再挑战吧。', 'system');
+        break;
+      }
+      if (state.bossDefeated) {
+        push(state, '你已击败过黑风寨主。江湖路远,还有更广阔的天地等你。', 'system');
+        break;
+      }
+      // BOSS 战:寨主真身
+      const boss = MONSTERS['hei-feng-zhai-zhu']!;
+      state.combat = { monster: boss, monsterHp: boss.hp, isBoss: true };
+      push(state, `你长啸一声,纵上断魂崖顶,向【${boss.name}】下了战书!`, 'combat');
+      push(state, `${boss.name}缓缓起身,黑风刀出鞘,煞气冲天。「哪来的小子,敢来送死?」`, 'combat');
+      push(state, '这是生死之战!「攻击」全力一搏,或「逃跑」保命。', 'system');
+      break;
+    }
   }
   return state;
 }
@@ -361,6 +382,7 @@ function monsterStrike(state: MudState, rng: Rng): void {
 
 function winCombat(state: MudState, rng: Rng): void {
   const p = state.player;
+  const isBoss = state.combat!.isBoss;
   const m = state.combat!.monster;
   state.combat = null;
   push(state, `✅ 你击败了【${m.name}】!获得阅历 ${m.exp}。`, 'good');
@@ -373,6 +395,16 @@ function winCombat(state: MudState, rng: Rng): void {
         push(state, `拾取:【${ITEMS[d.itemId]?.name ?? d.itemId}】`, 'good');
       }
     }
+  }
+
+  // 主线:击败黑风寨主,通关
+  if (isBoss) {
+    state.bossDefeated = true;
+    push(state, '━━━━━━━━━━━━━━━━━━', 'system');
+    push(state, `🎉 你一刀斩落黑风寨主,黑风寨群龙无首,作鸟兽散!`, 'good');
+    push(state, `方圆百里的百姓再不受剪径之苦,你的侠名自此传遍江湖。`, 'good');
+    push(state, `【通关】${p.name} 以 Lv.${p.level} 之身剿灭黑风寨,了却这一段江湖公案。`, 'system');
+    push(state, '江湖路远,你还可以继续历练、登峰造极,或「重新来过」开启新一世。', 'system');
   }
 
   // 阅历升级(支持一次获得大量阅历的连续升级)

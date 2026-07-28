@@ -63,6 +63,8 @@ export default function App() {
     [run],
   );
 
+  const handleChallenge = useCallback(() => run({ type: 'challenge' }), [run]);
+
   // 文本命令:先本地解析;「对话 xx」需在当前区域里按名字定位 NPC。
   const handleText = useCallback(
     (input: string) => {
@@ -119,6 +121,13 @@ export default function App() {
         </div>
       )}
 
+      {state.bossDefeated && (
+        <div className="boss-clear-banner">
+          <span className="boss-clear-tag serif">🎉 主线通关</span>
+          <span className="boss-clear-text">你已剿灭黑风寨,侠名传遍江湖!可继续历练,或「重新来过」开启新一世。</span>
+        </div>
+      )}
+
       <div className="main-grid">
         <div className="side-col">
           <MiniMap state={state} onGo={handleGo} />
@@ -135,7 +144,14 @@ export default function App() {
 
         <div>
           <Terminal log={state.log} />
-          <CommandBar dead={state.dead} inCombat={inCombat} onCommand={handleSimple} onText={handleText} />
+          <CommandBar
+            dead={state.dead}
+            inCombat={inCombat}
+            canChallenge={state.player.roomId === 'duan-hun-ya' && !state.bossDefeated && !state.dead}
+            onCommand={handleSimple}
+            onChallenge={handleChallenge}
+            onText={handleText}
+          />
 
           {state.dead && (
             <div className="death-overlay">

@@ -4,12 +4,15 @@ import type { FormEvent } from 'react';
 interface CommandBarProps {
   dead: boolean;
   inCombat: boolean;
+  /** 是否可挑战 BOSS(在断魂崖且未通关) */
+  canChallenge?: boolean;
   onCommand: (type: 'explore' | 'look' | 'rest' | 'status' | 'attack' | 'flee') => void;
+  onChallenge?: () => void;
   onText: (text: string) => void;
 }
 
 /** 命令区:情境命令按钮组(点按即达),文本输入作为可折叠的高级入口。 */
-export default function CommandBar({ dead, inCombat, onCommand, onText }: CommandBarProps) {
+export default function CommandBar({ dead, inCombat, canChallenge, onCommand, onChallenge, onText }: CommandBarProps) {
   const [text, setText] = useState('');
   const [showInput, setShowInput] = useState(false);
 
@@ -48,6 +51,11 @@ export default function CommandBar({ dead, inCombat, onCommand, onText }: Comman
             <button type="button" className="btn" disabled={dead} onClick={() => onCommand('status')}>
               📜 状态
             </button>
+            {canChallenge && onChallenge && (
+              <button type="button" className="btn btn-boss" disabled={dead} onClick={onChallenge}>
+                👑 挑战寨主
+              </button>
+            )}
           </>
         )}
         <button
