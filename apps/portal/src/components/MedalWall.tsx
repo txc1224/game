@@ -6,10 +6,11 @@ const TIER_LABEL: Record<string, string> = {
   gold: '金',
 };
 
-/** 成就勋章墙:已解锁点亮,未解锁灰显并示进度。 */
-export default function MedalWall({ profile }: { profile: Profile }) {
+/** 成就勋章墙:已解锁点亮,未解锁灰显并示进度,新解锁打「新!」角标。 */
+export default function MedalWall({ profile, freshIds = [] }: { profile: Profile; freshIds?: string[] }) {
   const medals = evalMedals(profile);
   const unlockedCount = medals.filter((m) => m.isUnlocked).length;
+  const fresh = new Set(freshIds);
 
   return (
     <div className="medal-wall">
@@ -26,6 +27,7 @@ export default function MedalWall({ profile }: { profile: Profile }) {
             className={`medal medal-${m.tier} ${m.isUnlocked ? 'unlocked' : 'locked'}`}
             title={`${m.name}(${TIER_LABEL[m.tier]})——${m.desc}${m.isUnlocked ? ' · 已解锁' : ''}`}
           >
+            {fresh.has(m.id) && <span className="medal-new">新!</span>}
             <span className="medal-emoji">{m.emoji}</span>
             <span className="medal-name">{m.name}</span>
             {m.isUnlocked ? (

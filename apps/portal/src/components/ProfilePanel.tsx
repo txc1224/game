@@ -1,13 +1,31 @@
 import { useEffect, useState } from 'react';
-import { readProfile, renownTitle, type Profile } from '../achievements';
+import { readProfile, renownTitle, consumeNewUnlocks, MEDALS, type Profile } from '../achievements';
+import { renderProfileImage, downloadBlob } from '../shareImage';
 import MedalWall from './MedalWall';
 
 /** 侠影档案:聚合三款游戏的成就,展示江湖声望与档案墙。 */
 export default function ProfilePanel() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [newUnlocks, setNewUnlocks] = useState<string[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
-    setProfile(readProfile());
+    const p = readProfile();
+    setProfile(p);
+    // 检测本次新解锁的勋章(对比上次记录)
+    const fresh = consumeNewUnlocks(p);
+    if (fresh.length > 0) {
+      setNewUnlocks(fresh);
+      const names = fresh
+        .map((id) => MEDALS.find((m) => m.id === id)?.name)
+        .filter(Boolean)
+        .join('、');
+      setToast(names);
+      // 5s 后隐藏 toast(角标保留)
+      const t = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(t);
+    }
   }, []);
 
   if (!profile) return null;
@@ -23,8 +41,26 @@ export default function ProfilePanel() {
 
   const title = renownTitle(profile.renown);
 
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const blob = await renderProfileImage(profile);
+      if (blob) downloadBlob(blob, `侠影档案-${title}.png`);
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <div className="profile-panel">
+      {toast && (
+        <div className="unlock-toast">
+          <span className="unlock-toast-icon">🏅</span>
+          <span className="unlock-toast-text">
+            恭喜解锁勋章:<strong>{toast}</strong>
+          </span>
+        </div>
+      )}
       <div className="profile-head">
         <div className="profile-title-group">
           <span className="profile-kicker">侠影档案</span>
@@ -33,6 +69,9 @@ export default function ProfilePanel() {
         <div className="profile-renown">
           <span className="profile-renown-num">{profile.renown}</span>
           <span className="profile-renown-label">江湖声望</span>
+          <button type="button" className="share-btn" onClick={() => void handleShare()} disabled={sharing}>
+            {sharing ? '绘制中…' : '📤 分享档案'}
+          </button>
         </div>
       </div>
 
@@ -81,7 +120,7 @@ export default function ProfilePanel() {
         </div>
       </div>
 
-      <MedalWall profile={profile} />
+      <MedalWall profile={profile} freshIds={newUnlocks} />
     </div>
   );
 }

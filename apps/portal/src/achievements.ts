@@ -222,3 +222,39 @@ export function evalMedals(p: Profile): MedalStatus[] {
   });
 }
 
+// ==================== 勋章解锁追踪(用于解锁动效) ====================
+
+const SEEN_MEDALS_KEY = 'portal:seen-medals';
+
+function readSeen(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_MEDALS_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * 计算本次相比上次「新解锁」的勋章,并把当前已解锁集合记录下来。
+ * 返回新解锁的勋章 id 列表(用于弹「恭喜解锁」与「新!」角标)。
+ */
+export function consumeNewUnlocks(p: Profile): string[] {
+  const seen = readSeen();
+  const current = MEDALS.filter((m) => m.unlocked(p)).map((m) => m.id);
+  const isFirstVisit = seen.size === 0 && !localStorage.getItem(SEEN_MEDALS_KEY);
+  const fresh = current.filter((id) => !seen.has(id));
+  try {
+    localStorage.setItem(SEEN_MEDALS_KEY, JSON.stringify(current));
+  } catch {
+    /* ignore */
+  }
+  // 首次访问不把所有已解锁当「新」(那是历史积累,不是这次解锁的)
+  return isFirstVisit ? [] : fresh;
+}
+
+/** 当前已解锁集合(不消费,仅展示角标用) */
+export function currentUnlockIds(p: Profile): Set<string> {
+  return new Set(MEDALS.filter((m) => m.unlocked(p)).map((m) => m.id));
+}
+
