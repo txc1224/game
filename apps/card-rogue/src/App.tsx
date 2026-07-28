@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { BattleState, RunState } from '@game/card-core';
 import {
   endTurn,
@@ -7,6 +7,8 @@ import {
   makeReward,
   newBattle,
   newRun,
+  newDailyRun,
+  todayKey,
   nextOptions,
   pickReward,
   playCard,
@@ -24,8 +26,10 @@ import RewardView from './components/RewardView';
 import LogView from './components/LogView';
 import ShopView from './components/ShopView';
 import EventView from './components/EventView';
+import DailyBanner from './components/DailyBanner';
 
 const SAVE_KEY = 'card-rogue:save';
+const DAILY_RESULT_KEY = 'card-rogue:daily-result';
 
 interface GameState {
   run: RunState;
@@ -34,6 +38,10 @@ interface GameState {
 
 function freshState(): GameState {
   return { run: newRun(), battle: null };
+}
+
+function dailyState(): GameState {
+  return { run: newDailyRun(), battle: null };
 }
 
 function loadState(): GameState {
@@ -45,6 +53,10 @@ function loadState(): GameState {
     if (parsed?.run) {
       const up = (parsed.run as unknown as { upgraded?: unknown }).upgraded;
       parsed.run.upgraded = new Set(Array.isArray(up) ? (up as string[]) : []);
+      // rng 是函数,序列化丢失,读档恢复为真随机(常规模式无所谓复现)
+      if (typeof parsed.run.rng !== 'object' || typeof parsed.run.rng.next !== 'function') {
+        parsed.run.rng = { next: () => Math.random() };
+      }
     }
     return parsed;
   } catch {
@@ -54,6 +66,7 @@ function loadState(): GameState {
 
 export default function App() {
   const [state, setState] = useState<GameState>(loadState);
+  const [mode, setMode] = useState<'normal' | 'daily'>('normal');
 
   const commit = (next: GameState) => {
     setState({ ...next });
@@ -119,6 +132,23 @@ export default function App() {
     }
   };
 
+  /** 每日一塔结算(通关/落败时记录最佳成绩) */
+  const recordDailyResult = (cleared: boolean) => {
+    try {
+      const key = todayKey();
+      const floor = run.nodeIndex + 1;
+      const prev = JSON.parse(localStorage.getItem(DAILY_RESULT_KEY) ?? '{}') as Record<string, { floor: number; cleared: boolean }>;
+      const cur = prev[key];
+      // 通关优先,其次按层数
+      if (!cur || (cleared && !cur.cleared) || floor > cur.floor) {
+        prev[key] = { floor: cleared ? run.nodes.length : floor, cleared };
+        localStorage.setItem(DAILY_RESULT_KEY, JSON.stringify(prev));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   /** 选择奖励牌(或跳过),回地图或通关。 */
   const handlePickReward = (cardId: string | null) => {
     pickReward(run, cardId);
@@ -155,15 +185,37 @@ export default function App() {
     commit({ run, battle: null });
   };
 
-  /** 再来一局。 */
+  /** 再来一局(按当前模式)。 */
   const handleRestart = () => {
     try {
       localStorage.removeItem(SAVE_KEY);
     } catch {
       // ignore
     }
+    setState(mode === 'daily' ? dailyState() : freshState());
+  };
+
+  /** 切到常规模式。 */
+  const toNormal = () => {
+    setMode('normal');
+    try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
     setState(freshState());
   };
+
+  /** 切到每日一塔。 */
+  const toDaily = () => {
+    setMode('daily');
+    try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+    setState(dailyState());
+  };
+
+  // 每日一塔:结算时记录最佳成绩(用 ref 保证只记一次)
+  const dailyRecorded = useRef(false);
+  if (mode === 'daily' && (run.phase === 'won' || run.phase === 'lost') && !dailyRecorded.current) {
+    dailyRecorded.current = true;
+    recordDailyResult(run.phase === 'won');
+  }
+  if (run.phase !== 'won' && run.phase !== 'lost') dailyRecorded.current = false;
 
   const renderPhase = () => {
     switch (run.phase) {
@@ -234,6 +286,14 @@ export default function App() {
     <div className="app-shell">
       <h1 className="app-title serif">黑风塔 · 卡牌江湖</h1>
       <p className="app-subtitle serif">武侠卡牌 · 一塔十层 · 登顶封侠</p>
+
+      <DailyBanner
+        mode={mode}
+        currentFloor={run.nodeIndex + 1}
+        cleared={run.phase === 'won'}
+        onToDaily={toDaily}
+        onToNormal={toNormal}
+      />
 
       <StatusBar run={run} />
 

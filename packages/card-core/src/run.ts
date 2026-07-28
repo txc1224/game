@@ -35,6 +35,8 @@ export interface RunState {
   activeEvent?: GameEvent;
   /** 已升级过的牌 id 集 */
   upgraded: Set<string>;
+  /** 本局的随机源(每日一塔用固定种子,常规用真随机) */
+  rng: Rng;
   log: { text: string; kind: string }[];
 }
 
@@ -99,6 +101,7 @@ export function newRun(rng: Rng = defaultRng): RunState {
     phase: 'map',
     rewardCards: [],
     upgraded: new Set(),
+    rng,
     log: [{ text: '你踏入黑风塔,塔高十层,顶层便是黑风寨主。每层可自行选路,一路杀上去吧。', kind: 'system' }],
   };
 }
@@ -125,7 +128,7 @@ export function getEnemy(enemyId: string): Enemy {
 }
 
 /** 进入指定节点(从 nextOptions 里选) */
-export function enterNode(s: RunState, nodeIndex: number, rng: Rng = defaultRng): MapNode | null {
+export function enterNode(s: RunState, nodeIndex: number, rng: Rng = s.rng): MapNode | null {
   const options = nextOptions(s);
   const node = options.find((n) => n.index === nodeIndex);
   if (!node) return null;
@@ -163,7 +166,7 @@ export function restHeal(s: RunState): void {
 }
 
 /** 战斗胜利后生成奖励(3 选 1 牌;精英掉遗物) */
-export function makeReward(s: RunState, rng: Rng = defaultRng): void {
+export function makeReward(s: RunState, rng: Rng = s.rng): void {
   s.rewardCards = rollCardReward(rng, 3);
   const node = s.nodes[s.nodeIndex];
   if (node?.kind === 'elite') {
@@ -325,7 +328,7 @@ function rollEvent(s: RunState, rng: Rng): GameEvent {
 }
 
 /** 处理事件选择,返回结果文案 */
-export function resolveEvent(s: RunState, optionIndex: number, rng: Rng = defaultRng): { text: string; upgradedCardId?: string } {
+export function resolveEvent(s: RunState, optionIndex: number, rng: Rng = s.rng): { text: string; upgradedCardId?: string } {
   const ev = s.activeEvent;
   if (!ev) return { text: '无事发生。' };
   let text = '你选择静观其变,继续赶路。';
