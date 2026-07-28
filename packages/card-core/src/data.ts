@@ -15,6 +15,14 @@ export interface Card {
   /** 数值(按 kind 解释: attack=伤害, skill 的 block=格挡) */
   damage?: number;
   block?: number;
+  /** 多段攻击次数(每段 damage 伤害) */
+  hits?: number;
+  /** 毒(回合末结算,层数递减) */
+  poison?: number;
+  /** 按当前格挡造成伤害(金钟反震流) */
+  blockToDamage?: boolean;
+  /** X费:耗尽全部能量,效果按消耗能量数结算(如乾坤一掷) */
+  xCost?: boolean;
   /** 抽牌数 */
   draw?: number;
   /** 获得能量 */
@@ -49,6 +57,27 @@ export const CARD_POOL: readonly Card[] = [
   { id: 'dugujian', name: '独孤一剑', kind: 'attack', rarity: 'rare', cost: 3, damage: 28, desc: '造成 28 点伤害。' },
   { id: 'jingang', name: '金刚不坏', kind: 'power', rarity: 'rare', cost: 2, strength: 3, block: 10, desc: '获得 10 点格挡,本场战斗力量 +3。' },
   { id: 'miejue', name: '灭绝剑气', kind: 'attack', rarity: 'rare', cost: 2, damage: 8, weak: 3, vulnerable: 3, desc: '造成 8 点伤害,施加 3 回合虚弱与易伤。' },
+  // —— 连击流(多段) ——
+  { id: 'jianyu', name: '剑雨纷飞', kind: 'attack', rarity: 'uncommon', cost: 2, damage: 4, hits: 4, desc: '连续刺出 4 剑,每剑 4 点伤害。' },
+  { id: 'luanshi', name: '乱石穿空', kind: 'attack', rarity: 'common', cost: 1, damage: 3, hits: 3, desc: '连续攻出 3 招,每招 3 点伤害。' },
+  { id: 'qijue', name: '七伤拳', kind: 'attack', rarity: 'rare', cost: 3, damage: 5, hits: 7, desc: '七拳连发,每拳 5 点伤害。' },
+  // —— 叠甲爆发流 ——
+  { id: 'jinzhong', name: '金钟反震', kind: 'attack', rarity: 'uncommon', cost: 2, blockToDamage: true, desc: '将当前格挡全部转化为伤害反击。' },
+  { id: 'tiejia', name: '铁甲护身', kind: 'skill', rarity: 'common', cost: 2, block: 14, desc: '获得 14 点格挡。' },
+  { id: 'houji', name: '厚积薄发', kind: 'skill', rarity: 'rare', cost: 1, block: 6, draw: 1, desc: '获得 6 点格挡,抽 1 张牌。' },
+  // —— 力量流 ——
+  { id: 'kuangquan', name: '狂拳', kind: 'attack', rarity: 'common', cost: 1, damage: 5, strength: 1, desc: '造成 5 点伤害,本场战斗力量 +1。' },
+  { id: 'poshan', name: '破山击', kind: 'attack', rarity: 'uncommon', cost: 2, damage: 9, strength: 2, desc: '造成 9 点伤害,本场战斗力量 +2。' },
+  { id: 'longxiang', name: '龙象般若', kind: 'power', rarity: 'rare', cost: 3, strength: 5, desc: '本场战斗力量 +5。' },
+  // —— 毒/持续流 ——
+  { id: 'shexin', name: '蛇心毒掌', kind: 'attack', rarity: 'uncommon', cost: 1, damage: 4, poison: 4, desc: '造成 4 点伤害,施加 4 层毒。' },
+  { id: 'wudu', name: '五毒神掌', kind: 'attack', rarity: 'rare', cost: 2, damage: 6, poison: 8, desc: '造成 6 点伤害,施加 8 层毒。' },
+  { id: 'chuanxin', name: '穿心钉', kind: 'attack', rarity: 'common', cost: 1, damage: 3, poison: 3, desc: '造成 3 点伤害,施加 3 层毒。' },
+  // —— 大能/能量流 ——
+  { id: 'qankun', name: '乾坤一掷', kind: 'attack', rarity: 'rare', cost: 0, xCost: true, damage: 8, desc: '耗尽全部能量,每点能量造成 8 点伤害。' },
+  { id: 'juhui', name: '聚气回元', kind: 'skill', rarity: 'uncommon', cost: 0, energy: 2, draw: 1, desc: '获得 2 点能量,抽 1 张牌。' },
+  { id: 'beiming', name: '北冥神功', kind: 'power', rarity: 'rare', cost: 2, energy: 1, draw: 1, strength: 1, desc: '获得 1 点能量,抽 1 张牌,本场战斗力量 +1。' },
+  { id: 'tianmo', name: '天魔解体', kind: 'attack', rarity: 'rare', cost: 4, damage: 40, desc: '造成 40 点伤害。' },
 ];
 
 export const CARD_MAP: ReadonlyMap<string, Card> = new Map(CARD_POOL.map((c) => [c.id, c]));

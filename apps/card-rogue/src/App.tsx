@@ -1,22 +1,29 @@
 import { useState } from 'react';
 import type { BattleState, RunState } from '@game/card-core';
 import {
-  advanceNode,
   endTurn,
+  enterNode,
   getEnemy,
   makeReward,
   newBattle,
   newRun,
+  nextOptions,
   pickReward,
   playCard,
   restHeal,
   runLost,
+  resolveEvent,
+  buyShopItem,
+  removeCard,
+  leaveShopOrEvent,
 } from '@game/card-core';
 import StatusBar from './components/StatusBar';
 import TowerMap from './components/TowerMap';
 import BattleView from './components/BattleView';
 import RewardView from './components/RewardView';
 import LogView from './components/LogView';
+import ShopView from './components/ShopView';
+import EventView from './components/EventView';
 
 const SAVE_KEY = 'card-rogue:save';
 
@@ -32,11 +39,17 @@ function freshState(): GameState {
 function loadState(): GameState {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (raw) return JSON.parse(raw) as GameState;
+    if (!raw) return freshState();
+    const parsed = JSON.parse(raw) as GameState;
+    // upgraded 是 Set,序列化后为数组/对象,需还原
+    if (parsed?.run) {
+      const up = (parsed.run as unknown as { upgraded?: unknown }).upgraded;
+      parsed.run.upgraded = new Set(Array.isArray(up) ? (up as string[]) : []);
+    }
+    return parsed;
   } catch {
-    // 存档损坏则重开
+    return freshState();
   }
-  return freshState();
 }
 
 export default function App() {
@@ -45,7 +58,11 @@ export default function App() {
   const commit = (next: GameState) => {
     setState({ ...next });
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(next));
+      const serializable = {
+        ...next,
+        run: { ...next.run, upgraded: [...next.run.upgraded] },
+      };
+      localStorage.setItem(SAVE_KEY, JSON.stringify(serializable));
     } catch {
       // 忽略存档失败
     }
@@ -54,9 +71,9 @@ export default function App() {
   const { run, battle } = state;
   const relicIds = run.relics;
 
-  /** 前进:进入下一节点,战斗节点则开战。 */
-  const handleAdvance = () => {
-    const node = advanceNode(run);
+  /** 选择下一层节点(分叉选路)。 */
+  const handleEnterNode = (nodeIndex: number) => {
+    const node = enterNode(run, nodeIndex);
     if (node && (node.kind === 'battle' || node.kind === 'elite' || node.kind === 'boss')) {
       const b = newBattle({
         deck: run.deck,
@@ -67,7 +84,6 @@ export default function App() {
       });
       commit({ run, battle: b });
     } else {
-      // rest / 直接通关(advanceNode 已把 phase 置好)
       commit({ run, battle: null });
     }
   };
@@ -115,6 +131,30 @@ export default function App() {
     commit({ run, battle: null });
   };
 
+  /** 事件选择。 */
+  const handleEvent = (optionIndex: number) => {
+    resolveEvent(run, optionIndex);
+    commit({ run, battle: null });
+  };
+
+  /** 购买商品。 */
+  const handleBuy = (index: number) => {
+    buyShopItem(run, index);
+    commit({ run, battle: null });
+  };
+
+  /** 删牌。 */
+  const handleRemove = (cardId: string) => {
+    removeCard(run, cardId);
+    commit({ run, battle: null });
+  };
+
+  /** 离开商店/事件。 */
+  const handleLeave = () => {
+    leaveShopOrEvent(run);
+    commit({ run, battle: null });
+  };
+
   /** 再来一局。 */
   const handleRestart = () => {
     try {
@@ -129,11 +169,17 @@ export default function App() {
     switch (run.phase) {
       case 'combat':
         return battle ? (
-          <BattleView battle={battle} relicIds={relicIds} onPlay={handlePlay} onEndTurn={handleEndTurn} />
+          <BattleView battle={battle} relicIds={relicIds} upgraded={run.upgraded} onPlay={handlePlay} onEndTurn={handleEndTurn} />
         ) : null;
 
       case 'reward':
         return <RewardView run={run} onPick={handlePickReward} />;
+
+      case 'shop':
+        return <ShopView run={run} onBuy={handleBuy} onRemove={handleRemove} onLeave={handleLeave} />;
+
+      case 'event':
+        return run.activeEvent ? <EventView run={run} onChoose={handleEvent} /> : null;
 
       case 'rest':
         return (
@@ -152,24 +198,11 @@ export default function App() {
             <h2 className="end-title">🎉 通关!</h2>
             <p className="end-text">你击败黑风寨主,黑风塔重归太平。江湖又添一段传说。</p>
             <div className="end-stats">
-              <div className="stat-row">
-                <span className="stat-label">剩余气血</span>
-                <span className="stat-value">
-                  {run.hp} / {run.maxHp}
-                </span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">牌组张数</span>
-                <span className="stat-value">{run.deck.length}</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">遗物数量</span>
-                <span className="stat-value">{run.relics.length}</span>
-              </div>
+              <div className="stat-row"><span className="stat-label">剩余气血</span><span className="stat-value">{run.hp} / {run.maxHp}</span></div>
+              <div className="stat-row"><span className="stat-label">牌组张数</span><span className="stat-value">{run.deck.length}</span></div>
+              <div className="stat-row"><span className="stat-label">遗物数量</span><span className="stat-value">{run.relics.length}</span></div>
             </div>
-            <button className="btn btn-primary" onClick={handleRestart}>
-              再来一局
-            </button>
+            <button className="btn btn-primary" onClick={handleRestart}>再来一局</button>
           </div>
         );
 
@@ -179,24 +212,11 @@ export default function App() {
             <h2 className="end-title">☠️ 落败</h2>
             <p className="end-text">你倒在了黑风塔中。重整旗鼓,再来一世吧。</p>
             <div className="end-stats">
-              <div className="stat-row">
-                <span className="stat-label">止步层数</span>
-                <span className="stat-value">
-                  {run.nodeIndex + 1} / {run.nodes.length}
-                </span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">牌组张数</span>
-                <span className="stat-value">{run.deck.length}</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">遗物数量</span>
-                <span className="stat-value">{run.relics.length}</span>
-              </div>
+              <div className="stat-row"><span className="stat-label">止步层数</span><span className="stat-value">{run.nodeIndex + 1} 层</span></div>
+              <div className="stat-row"><span className="stat-label">牌组张数</span><span className="stat-value">{run.deck.length}</span></div>
+              <div className="stat-row"><span className="stat-label">遗物数量</span><span className="stat-value">{run.relics.length}</span></div>
             </div>
-            <button className="btn btn-primary" onClick={handleRestart}>
-              再来一局
-            </button>
+            <button className="btn btn-primary" onClick={handleRestart}>再来一局</button>
           </div>
         );
 
@@ -204,7 +224,7 @@ export default function App() {
       default:
         return (
           <div className="map-hint card">
-            <p className="rest-text">黑风塔高耸入云,杀机四伏。点击上方「前进」,踏上登塔之路。</p>
+            <p className="rest-text">黑风塔高耸入云,杀机四伏。在上方地图选择一条上塔的路吧。</p>
           </div>
         );
     }
@@ -217,7 +237,7 @@ export default function App() {
 
       <StatusBar run={run} />
 
-      <TowerMap nodes={run.nodes} nodeIndex={run.nodeIndex} phase={run.phase} onAdvance={handleAdvance} />
+      <TowerMap nodes={run.nodes} nodeIndex={run.nodeIndex} options={nextOptions(run)} phase={run.phase} onChoose={handleEnterNode} />
 
       <div className="phase-area">{renderPhase()}</div>
 

@@ -26,6 +26,7 @@ export interface Fighter {
   strength: number;
   vulnerable: number; // 易伤回合数
   weak: number; // 虚弱回合数
+  poison: number; // 毒层数(回合末结算并递减)
 }
 
 export interface BattleLog {
@@ -76,8 +77,8 @@ export function newBattle(opts: {
   const startBlock = relics.has('xuan-tie') ? 6 : 0;
   const startStr = relics.has('zhan-yi') ? 1 : 0;
   const s: BattleState = {
-    player: { hp: opts.playerHp, maxHp: opts.playerMaxHp, block: startBlock, energy: 0, maxEnergy: 3, strength: startStr, vulnerable: 0, weak: 0 },
-    enemy: { hp: opts.enemy.maxHp, maxHp: opts.enemy.maxHp, block: 0, energy: 0, maxEnergy: 0, strength: 0, vulnerable: 0, weak: 0, def: opts.enemy, moveIndex: 0 },
+    player: { hp: opts.playerHp, maxHp: opts.playerMaxHp, block: startBlock, energy: 0, maxEnergy: 3, strength: startStr, vulnerable: 0, weak: 0, poison: 0 },
+    enemy: { hp: opts.enemy.maxHp, maxHp: opts.enemy.maxHp, block: 0, energy: 0, maxEnergy: 0, strength: 0, vulnerable: 0, weak: 0, poison: 0, def: opts.enemy, moveIndex: 0 },
     drawPile: shuffle(opts.deck, rng),
     hand: [],
     discardPile: [],
@@ -135,7 +136,12 @@ export function playCard(s: BattleState, handIndex: number, relicIds: string[] =
   let cost = card.cost;
   // 酒葫芦:每回合第一次出牌 +1 能量(等效本次免费一档,简化:本回合首张牌若费>=1则-1)
   if (relics.has('jiu-hu') && s.cardsPlayedThisTurn === 0 && cost >= 1) cost -= 1;
-  if (s.player.energy < cost) return false;
+  // X费牌:耗尽全部能量,至少需 1 点能量才有意义
+  const isXCost = Boolean(card.xCost);
+  if (isXCost) {
+    if (s.player.energy < 1) return false;
+    cost = s.player.energy;
+  } else if (s.player.energy < cost) return false;
 
   s.player.energy -= cost;
   s.cardsPlayedThisTurn += 1;
@@ -143,20 +149,47 @@ export function playCard(s: BattleState, handIndex: number, relicIds: string[] =
   s.discardPile.push(cardId);
 
   const parts: string[] = [];
-  if (card.damage) {
-    let raw = card.damage + s.player.strength;
+
+  /** 对敌人造成一段伤害(含力量/易伤/格挡扣减),返回实际掉血 */
+  const strike = (base: number): number => {
+    let raw = base + s.player.strength;
     if (s.enemy.vulnerable > 0) raw = Math.round(raw * 1.5);
-    // 先扣敌人格挡,剩余伤害打血;格挡单层扣减
     const absorbed = Math.min(s.enemy.block, raw);
     s.enemy.block -= absorbed;
     const dmg = raw - absorbed;
     s.enemy.hp -= dmg;
-    parts.push(absorbed > 0 ? `破开 ${absorbed} 点格挡,造成 ${dmg} 点伤害` : `造成 ${dmg} 点伤害`);
+    return dmg;
+  };
+
+  // X费:cost 点能量 × damage
+  if (isXCost && card.damage) {
+    let dmgTotal = 0;
+    for (let i = 0; i < cost; i++) dmgTotal += strike(card.damage);
+    parts.push(`耗尽 ${cost} 点能量,造成 ${dmgTotal} 点伤害`);
+  } else if (card.blockToDamage) {
+    // 格挡转伤害:按当前格挡造成伤害(不消耗格挡)
+    const raw = s.player.block;
+    if (raw > 0) {
+      const dmg = strike(raw);
+      parts.push(`将 ${raw} 点格挡反震为 ${dmg} 点伤害`);
+    } else {
+      parts.push('没有格挡可反震');
+    }
+  } else if (card.damage && card.hits && card.hits > 1) {
+    // 多段攻击
+    let dmgTotal = 0;
+    for (let i = 0; i < card.hits; i++) dmgTotal += strike(card.damage);
+    parts.push(`${card.hits} 连击,共造成 ${dmgTotal} 点伤害`);
+  } else if (card.damage) {
+    const dmg = strike(card.damage);
+    parts.push(`造成 ${dmg} 点伤害`);
   }
+
   if (card.block) {
     s.player.block += card.block;
     parts.push(`获得 ${card.block} 点格挡`);
   }
+  if (card.poison) { s.enemy.poison += card.poison; parts.push(`施加 ${card.poison} 层毒`); }
   if (card.strength) { s.player.strength += card.strength; parts.push(`力量 +${card.strength}`); }
   if (card.vulnerable) { s.enemy.vulnerable += card.vulnerable; parts.push(`易伤 ${card.vulnerable} 回合`); }
   if (card.weak) { s.enemy.weak += card.weak; parts.push(`虚弱 ${card.weak} 回合`); }
@@ -206,6 +239,21 @@ export function endTurn(s: BattleState, rng: Rng = defaultRng, relicIds: string[
   if (s.player.weak > 0) s.player.weak -= 1;
   if (s.enemy.vulnerable > 0) s.enemy.vulnerable -= 1;
   if (s.enemy.weak > 0) s.enemy.weak -= 1;
+
+  // 毒结算(回合末扣血,层数递减)
+  if (s.enemy.poison > 0) {
+    const poisonDmg = s.enemy.poison;
+    s.enemy.hp -= poisonDmg;
+    log(s, `${s.enemy.def.name}毒发,受 ${poisonDmg} 点毒伤`, 'enemy');
+    s.enemy.poison = Math.max(0, s.enemy.poison - 1);
+    if (s.enemy.hp <= 0) {
+      s.enemy.hp = 0;
+      s.over = true;
+      s.victory = true;
+      log(s, `✅ ${s.enemy.def.name}毒发身亡,你不战而胜!`, 'good');
+      return;
+    }
+  }
 
   // 双方格挡在回合末清零(杀戮尖塔规则:格挡不跨回合累积,防止永远打不动)
   s.enemy.block = 0;

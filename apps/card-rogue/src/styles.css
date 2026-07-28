@@ -783,3 +783,162 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* ===== 战斗动效 ===== */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+.shake { animation: shake 0.35s ease; }
+
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(0) scale(0.8); }
+  15% { opacity: 1; transform: translateY(-14px) scale(1.15); }
+  100% { opacity: 0; transform: translateY(-56px) scale(1); }
+}
+.damage-float-layer {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 20;
+}
+.enemy-card, .player-combat { position: relative; }
+.damage-float {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 26px;
+  font-weight: 700;
+  font-family: 'STSong', serif;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  animation: floatUp 0.95s ease-out forwards;
+  white-space: nowrap;
+}
+.float-enemy-dmg { color: #ff8a7a; }
+.float-player-dmg { color: #ff6b6b; }
+.float-heal { color: #7dd38a; }
+.float-block { color: #8ab4f8; }
+
+/* 毒徽章 */
+.badge-poison {
+  border: 1px solid #7dd38a;
+  color: #7dd38a;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+/* ===== 分叉爬塔地图 ===== */
+.tower-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+}
+.tower-tier {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+.tower-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  color: #c2c7ce;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 62px;
+  transition: all 0.15s ease;
+}
+.tower-node:disabled { cursor: default; }
+.tower-icon { font-size: 20px; line-height: 1; }
+.tower-label { font-size: 11px; letter-spacing: 1px; }
+.tower-node.passed { opacity: 0.35; }
+.tower-node.current {
+  border-color: #e8d9a8;
+  background: rgba(232,217,168,0.12);
+  color: #e8d9a8;
+}
+.tower-node.option {
+  border-color: #b89b5e;
+  background: rgba(184,155,94,0.15);
+  color: #f0e6c8;
+  box-shadow: 0 0 12px rgba(232,217,168,0.35);
+  animation: optionGlow 1.4s ease-in-out infinite;
+}
+@keyframes optionGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(232,217,168,0.25); }
+  50% { box-shadow: 0 0 18px rgba(232,217,168,0.55); }
+}
+.tower-node.option:hover { transform: translateY(-2px); }
+.tower-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #c9b98a;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+/* ===== 商店 ===== */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+}
+.shop-item.sold { opacity: 0.4; }
+.shop-item-name { font-size: 14px; color: #f0e6c8; }
+.shop-item-desc { font-size: 12px; color: #9aa0a6; margin-top: 4px; line-height: 1.4; }
+.gold-text { color: #f29900; font-weight: 600; }
+.shop-remove { margin-top: 14px; padding-top: 14px; border-top: 1px dashed rgba(255,255,255,0.1); }
+.btn-sm { min-height: 36px; font-size: 13px; padding: 4px 12px; }
+
+/* ===== 奇遇 ===== */
+.event-text {
+  font-size: 16px;
+  line-height: 1.9;
+  color: #d5dae1;
+  font-family: 'STSong', serif;
+  margin: 14px 0 20px;
+}
+.event-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.event-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  text-align: left;
+}
+.event-option-label { font-size: 15px; color: #f0e6c8; }
+.event-option-desc { font-size: 12px; color: #9aa0a6; }
+
+/* 升级牌金色描边 */
+.card-upgraded {
+  border-color: #f29900 !important;
+  box-shadow: 0 0 10px rgba(242,153,0,0.35);
+}

@@ -8,7 +8,8 @@ import {
   getCard,
   starterDeck,
   newRun,
-  advanceNode,
+  enterNode,
+  nextOptions,
   makeReward,
   pickReward,
   restHeal,
@@ -102,11 +103,16 @@ describe('爬塔 run', () => {
   it('战斗节点进入 combat,篝火进入 rest', () => {
     const r = newRun(seededRng(2));
     let sawCombat = false, sawRest = false;
-    for (let i = 0; i < 10 && (sawCombat === false || sawRest === false); i++) {
-      const n = advanceNode(r, seededRng(i));
-      if (!n) break;
-      if (n.kind === 'rest') { sawRest = true; expect(r.phase).toBe('rest'); restHeal(r); }
-      else { sawCombat = true; expect(r.phase).toBe('combat'); r.phase = 'map'; } // 跳过战斗
+    // 逐层选路推进(总能碰到 battle 与 rest/shop)
+    for (let t = 0; t < 10 && (sawCombat === false || sawRest === false); t++) {
+      const opts = nextOptions(r);
+      if (opts.length === 0) break;
+      // 优先选还没见过的类型
+      const pick = opts.find((n) => (n.kind === 'rest' && !sawRest) || (n.kind === 'battle' && !sawCombat)) ?? opts[0]!;
+      enterNode(r, pick.index, seededRng(t));
+      if (pick.kind === 'rest') { sawRest = true; expect(r.phase).toBe('rest'); restHeal(r); }
+      else if (pick.kind === 'battle') { sawCombat = true; expect(r.phase).toBe('combat'); r.phase = 'map'; }
+      else r.phase = 'map';
     }
     expect(sawCombat).toBe(true);
     expect(sawRest).toBe(true);
@@ -114,7 +120,9 @@ describe('爬塔 run', () => {
 
   it('胜利后给 3 张奖励牌,选牌入牌组', () => {
     const r = newRun(seededRng(3));
-    advanceNode(r, seededRng(3)); // 第一个战斗节点
+    const battleNode = nextOptions(r).find((n) => n.kind === 'battle')!;
+    enterNode(r, battleNode.index, seededRng(3));
+    expect(r.phase).toBe('combat');
     const deckBefore = r.deck.length;
     makeReward(r, seededRng(3));
     expect(r.phase).toBe('reward');
@@ -126,9 +134,16 @@ describe('爬塔 run', () => {
 
   it('精英掉遗物', () => {
     const r = newRun(seededRng(5));
-    // 推进到精英节点
-    let node;
-    do { node = advanceNode(r, seededRng(5)); if (r.phase==='combat') r.phase='map'; } while (node && node.kind !== 'elite');
+    // 直接推进到一个精英节点
+    let elite;
+    for (let t = 0; t < 10 && !elite; t++) {
+      const opts = nextOptions(r);
+      elite = opts.find((n) => n.kind === 'elite');
+      const pick = elite ?? opts[0]!;
+      enterNode(r, pick.index, seededRng(t));
+      if (pick.kind !== 'elite') r.phase = 'map';
+    }
+    expect(elite).toBeTruthy();
     r.phase = 'combat';
     makeReward(r, seededRng(5));
     expect(r.rewardRelic).toBeTruthy();
