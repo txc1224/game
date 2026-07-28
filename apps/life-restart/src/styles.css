@@ -199,3 +199,43 @@ body {
 .center {
   text-align: center;
 }
+
+/* ===== 移动端适配 ===== */
+.live-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.live-side {
+  position: sticky;
+  top: 20px;
+}
+.trait-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+
+@media (max-width: 860px) {
+  .live-grid {
+    grid-template-columns: 1fr; /* 窄屏单栏:属性在上,时间线在下 */
+    gap: 16px;
+  }
+  .live-side {
+    position: static; /* 取消 sticky,避免遮挡 */
+  }
+  .trait-grid {
+    grid-template-columns: 1fr; /* 词条卡片单列 */
+  }
+  .app-shell {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  /* 按钮/可点目标加大,便于触控 */
+  .btn, .btn-lg {
+    min-height: 44px;
+    font-size: 15px;
+  }
+}

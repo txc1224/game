@@ -117,14 +117,7 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
         </div>
       ) : (
         <>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: 14,
-              margin: '18px 0',
-            }}
-          >
+          <div className="trait-grid">
             {traits.map((t) => {
               const color = RARITY_COLORS[t.rarity];
               const active = selected.has(t.id);

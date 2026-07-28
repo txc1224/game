@@ -746,3 +746,40 @@ body {
   margin: 0 auto 22px;
   text-align: left;
 }
+
+/* ===== 移动端适配 ===== */
+@media (max-width: 720px) {
+  .app-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  /* 手牌:窄屏允许横向滑动,卡牌略缩 */
+  .hand-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .game-card {
+    width: 108px;
+    min-height: 128px;
+    flex: 0 0 auto; /* 不被压缩,配合横滑 */
+    font-size: 13px;
+  }
+  /* 状态条/敌人卡堆叠 */
+  .status-hp {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  /* 触控目标加大 */
+  .btn, .end-turn-btn, .btn-primary {
+    min-height: 44px;
+    font-size: 15px;
+  }
+  /* 爬塔节点条可横滑 */
+  .tower-map {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

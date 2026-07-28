@@ -181,15 +181,8 @@ function LiveStage({
   return (
     <div>
       {error ? <div className="error-box">{error}</div> : null}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 340px) 1fr',
-          gap: 18,
-          alignItems: 'start',
-        }}
-      >
-        <div style={{ position: 'sticky', top: 20 }}>
+      <div className="live-grid">
+        <div className="live-side">
           <h2 className="section-title serif">
             {live.age} 岁 · 属性
           </h2>
