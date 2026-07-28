@@ -1,3 +1,5 @@
+import ProfilePanel from './components/ProfilePanel';
+
 interface GameCard {
   id: string;
   title: string;
@@ -65,6 +67,8 @@ export default function App() {
           </a>
         ))}
       </main>
+
+      <ProfilePanel />
 
       <footer className="portal-footer">
         <span>本地畅玩 · 数据存于你的浏览器</span>

@@ -68,3 +68,91 @@ body {
   /* 整个卡片可点,确保足够触控面积 */
   .game-cta { align-self: stretch; text-align: center; padding: 12px; border: 1px solid var(--line); border-radius: 10px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 }
+
+/* ===== 侠影档案 ===== */
+.profile-panel {
+  margin-top: 44px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(184,155,94,0.06), rgba(255,255,255,0.01));
+}
+.profile-empty {
+  margin-top: 40px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 24px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+}
+.profile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.profile-kicker {
+  display: block;
+  font-size: 12px;
+  color: var(--gold-dim);
+  letter-spacing: 4px;
+  margin-bottom: 4px;
+}
+.profile-title {
+  font-size: 32px;
+  color: var(--gold);
+  letter-spacing: 4px;
+}
+.profile-renown { text-align: right; }
+.profile-renown-num {
+  display: block;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: 'STSong', serif;
+  line-height: 1;
+}
+.profile-renown-label { font-size: 12px; color: var(--muted); letter-spacing: 2px; }
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.profile-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  background: rgba(255,255,255,0.02);
+}
+.profile-card.dim { opacity: 0.45; }
+.profile-card-head {
+  font-size: 14px;
+  color: var(--gold-dim);
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.profile-list { list-style: none; margin: 0; padding: 0; }
+.profile-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 13px;
+  border-bottom: 1px dashed rgba(255,255,255,0.06);
+  color: var(--muted);
+}
+.profile-list li:last-child { border-bottom: none; }
+.profile-list strong { color: #e6e1d5; font-weight: 600; }
+.profile-list strong.hl { color: var(--gold); }
+.profile-none { font-size: 13px; color: var(--muted); text-align: center; padding: 12px 0; }
+
+@media (max-width: 640px) {
+  .profile-title { font-size: 24px; }
+  .profile-head { flex-direction: column; align-items: flex-start; }
+  .profile-renown { text-align: left; }
+}
