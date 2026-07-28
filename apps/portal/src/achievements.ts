@@ -144,3 +144,81 @@ export function renownTitle(renown: number): string {
   if (renown > 0) return '初出茅庐';
   return '无名之辈';
 }
+
+// ==================== 成就勋章 ====================
+
+export type MedalTier = 'bronze' | 'silver' | 'gold';
+
+export interface Medal {
+  id: string;
+  name: string;
+  desc: string;
+  emoji: string;
+  tier: MedalTier;
+  /** 是否已解锁 */
+  unlocked: (p: Profile) => boolean;
+  /** 解锁进度的可读描述(未解锁时显示) */
+  progress?: (p: Profile) => string;
+}
+
+const lifeBest = (p: Profile, ids: string[]): boolean => {
+  // 需要结局 id,Profile 里只有 title,这里重新读
+  const lives = readJson<{ ending_id: string }[]>('life-restart:lives') ?? [];
+  return lives.some((l) => ids.includes(l.ending_id));
+};
+
+export const MEDALS: Medal[] = [
+  // —— 人生重开 ——
+  { id: 'first-life', name: '初尝轮回', desc: '完成一世人生', emoji: '🌱', tier: 'bronze',
+    unlocked: (p) => p.life.lives >= 1, progress: (p) => `${p.life.lives}/1 世` },
+  { id: 'long-life', name: '松鹤延年', desc: '有一世活到 70 岁以上', emoji: '🎋', tier: 'silver',
+    unlocked: (p) => (p.life.bestAge ?? 0) >= 70, progress: (p) => `最长 ${p.life.bestAge ?? 0}/70 岁` },
+  { id: 'legend', name: '武林神话', desc: '有一世达成「武林神话」结局', emoji: '👑', tier: 'gold',
+    unlocked: (p) => lifeBest(p, ['legend']) },
+  { id: 'grandmaster', name: '开宗立派', desc: '有一世达成「一代宗师」或「武学宗师」结局', emoji: '🏯', tier: 'silver',
+    unlocked: (p) => lifeBest(p, ['grandmaster', 'martial-scholar']) },
+  { id: 'ten-lives', name: '十世历练', desc: '累计经历十世', emoji: '🔄', tier: 'silver',
+    unlocked: (p) => p.life.lives >= 10, progress: (p) => `${p.life.lives}/10 世` },
+
+  // —— 武林 MUD ——
+  { id: 'mud-start', name: '初入江湖', desc: '在《武林群侠传》开始历练', emoji: '🗺️', tier: 'bronze',
+    unlocked: (p) => p.mud.played },
+  { id: 'mud-lv10', name: '小有所成', desc: '《武林群侠传》修为达 Lv.10', emoji: '💪', tier: 'silver',
+    unlocked: (p) => (p.mud.level ?? 0) >= 10, progress: (p) => `Lv.${p.mud.level ?? 0}/10` },
+  { id: 'mud-skills3', name: '博采众长', desc: '《武林群侠传》习得 3 门武功', emoji: '📜', tier: 'silver',
+    unlocked: (p) => (p.mud.skills ?? 0) >= 3, progress: (p) => `${p.mud.skills ?? 0}/3 门` },
+  { id: 'mud-skills5', name: '武学渊博', desc: '《武林群侠传》习得 5 门武功', emoji: '📚', tier: 'gold',
+    unlocked: (p) => (p.mud.skills ?? 0) >= 5, progress: (p) => `${p.mud.skills ?? 0}/5 门` },
+
+  // —— 黑风塔 ——
+  { id: 'card-climb', name: '登塔之旅', desc: '在《黑风塔》爬到第 5 层', emoji: '🧗', tier: 'bronze',
+    unlocked: (p) => (p.card.floor ?? 0) >= 5 || Boolean(p.card.cleared), progress: (p) => `第 ${p.card.floor ?? 0}/5 层` },
+  { id: 'card-clear', name: '塔顶封侠', desc: '通关《黑风塔》,击败黑风寨主', emoji: '🏆', tier: 'gold',
+    unlocked: (p) => Boolean(p.card.cleared) },
+  { id: 'card-relics3', name: '收藏家', desc: '《黑风塔》持有 3 件遗物', emoji: '💎', tier: 'silver',
+    unlocked: (p) => (p.card.relics ?? 0) >= 3, progress: (p) => `${p.card.relics ?? 0}/3 件` },
+
+  // —— 跨游戏 ——
+  { id: 'all-played', name: '三修侠客', desc: '三款游戏都玩过', emoji: '⚡', tier: 'silver',
+    unlocked: (p) => p.life.played && p.mud.played && p.card.played },
+  { id: 'renown-80', name: '一代大侠', desc: '江湖声望达 80', emoji: '🌟', tier: 'gold',
+    unlocked: (p) => p.renown >= 80, progress: (p) => `${p.renown}/80` },
+];
+
+export interface MedalStatus extends Medal {
+  isUnlocked: boolean;
+  progressText?: string;
+}
+
+/** 评估所有勋章的解锁状态 */
+export function evalMedals(p: Profile): MedalStatus[] {
+  return MEDALS.map((m) => {
+    const isUnlocked = m.unlocked(p);
+    return {
+      ...m,
+      isUnlocked,
+      progressText: !isUnlocked && m.progress ? m.progress(p) : undefined,
+    };
+  });
+}
+

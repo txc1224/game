@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { readProfile, renownTitle, type Profile } from '../achievements';
+import MedalWall from './MedalWall';
 
 /** 侠影档案:聚合三款游戏的成就,展示江湖声望与档案墙。 */
 export default function ProfilePanel() {
@@ -79,6 +80,8 @@ export default function ProfilePanel() {
           )}
         </div>
       </div>
+
+      <MedalWall profile={profile} />
     </div>
   );
 }
