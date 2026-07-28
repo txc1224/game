@@ -20,6 +20,7 @@ import {
   type Trait,
   type YearResult,
   type LifeState,
+  type ScenarioId,
 } from '@game/game-core';
 
 export interface Meta {
@@ -159,8 +160,8 @@ export async function fetchMeta(): Promise<Meta> {
   };
 }
 
-export async function rollTraits(): Promise<RolledTraitsData> {
-  const { traits, rerollLeft } = coreRollTraits(3);
+export async function rollTraits(scenario?: ScenarioId): Promise<RolledTraitsData> {
+  const { traits, rerollLeft } = coreRollTraits(3, scenario ? { scenario } : undefined);
   return { traits, rerollLeft };
 }
 
@@ -168,11 +169,12 @@ export async function startLife(input: {
   traitIds: string[];
   name?: string;
   initialAlloc?: Allocation;
+  scenario?: ScenarioId;
 }): Promise<StartLifeData> {
   if (!Array.isArray(input.traitIds) || input.traitIds.length === 0) {
     throw new Error('请至少选择一个词条,方能踏入江湖。');
   }
-  const state = coreStartLife(input.traitIds, input.initialAlloc ?? {});
+  const state = coreStartLife(input.traitIds, input.initialAlloc ?? {}, input.scenario ? { scenario: input.scenario } : undefined);
   const lifeId = uuid();
   const sessions = read<SessionMap>(SESSIONS_KEY, {});
   sessions[lifeId] = { name: input.name ?? '无名侠客', state: serializeState(state) };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ATTR_LABELS, ATTR_KEYS, ALLOC_CAP_PER_ATTR, BASE_ATTRS, RARITY_COLORS, RARITY_LABELS } from '@game/game-core';
-import type { Allocation, Attributes, AttrKey, Trait } from '@game/game-core';
+import { ATTR_LABELS, ATTR_KEYS, ALLOC_CAP_PER_ATTR, BASE_ATTRS, RARITY_COLORS, RARITY_LABELS, SCENARIOS } from '@game/game-core';
+import type { Allocation, Attributes, AttrKey, Trait, ScenarioId } from '@game/game-core';
 import { rollTraits, startLife } from '../api';
 import type { StartLifeData } from '../api';
 import { AttributePanel } from './AttributePanel';
@@ -24,6 +24,7 @@ function formatAttrMod(mod: Partial<Attributes>): string {
 }
 
 export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
+  const [scenario, setScenario] = useState<ScenarioId>('jianghu');
   const [traits, setTraits] = useState<Trait[]>([]);
   const [rerollLeft, setRerollLeft] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -38,11 +39,11 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
   );
   const remaining = initialPoints - spent;
 
-  async function loadTraits(isReroll = false) {
+  async function loadTraits(isReroll = false, sc: ScenarioId = scenario) {
     setLoading(true);
     setError(null);
     try {
-      const data = await rollTraits();
+      const data = await rollTraits(sc === 'jianghu' ? undefined : sc);
       setTraits(data.traits);
       // 后端每次都回满 REROLL_MAX,故刷新次数由前端本地维护:首次装载用后端值,之后递减
       setRerollLeft((prev) => (isReroll ? Math.max(0, prev - 1) : data.rerollLeft));
@@ -59,6 +60,11 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
     void loadTraits(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function chooseScenario(id: ScenarioId) {
+    setScenario(id);
+    void loadTraits(false, id);
+  }
 
   function toggleTrait(id: string) {
     setSelected((prev) => {
@@ -94,6 +100,7 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
       const data = await startLife({
         traitIds: [...selected],
         initialAlloc: spent > 0 ? alloc : undefined,
+        scenario: scenario === 'jianghu' ? undefined : scenario,
       });
       onStarted(data, chosen);
     } catch (e) {
@@ -104,6 +111,22 @@ export function TraitDraft({ initialPoints, onStarted }: TraitDraftProps) {
 
   return (
     <div>
+      <h2 className="section-title serif">选择你的人生剧本</h2>
+      <div className="scenario-row">
+        {SCENARIOS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={`scenario-card ${scenario === s.id ? 'active' : ''}`}
+            onClick={() => chooseScenario(s.id)}
+          >
+            <span className="scenario-name serif">{s.name}</span>
+            <span className="scenario-tagline">{s.tagline}</span>
+            <span className="scenario-desc">{s.desc}</span>
+          </button>
+        ))}
+      </div>
+
       <h2 className="section-title serif">选择你的先天天赋</h2>
       <p className="muted" style={{ marginTop: -6 }}>
         命由天定,运由己造。点击卡片可取舍词条,选中的词条将伴随你一生。

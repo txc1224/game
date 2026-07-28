@@ -11,6 +11,7 @@ import type {
 } from './types.js';
 import { cryptoRng, seededRng, weightedIndex, type Rng } from './rng.js';
 import { RARITY_ORDER, RARITY_WEIGHTS, TRAITS, getTrait } from './traits.js';
+import { getScenario, type Scenario, type ScenarioId } from './scenarios.js';
 import {
   BASE_ATTRS,
   INITIAL_POINTS,
@@ -67,11 +68,15 @@ export interface LifeState {
   pet?: string;
 }
 
-/** 按稀有度先定档、再在档内按权重二次随机,抽 count 条互不重复的词条 */
-export function rollTraits(count = 3, opts?: EngineOptions): RolledTraits {
+/** 按稀有度先定档、再在档内按权重二次随机,抽 count 条互不重复的词条。可带剧本(并入专属词条池) */
+export function rollTraits(count = 3, opts?: EngineOptions & { scenario?: ScenarioId }): RolledTraits {
   const rng = resolveRng(opts);
   const chosen = new Set<string>();
   const result: Trait[] = [];
+
+  // 剧本池:共享词条 + 剧本专属词条
+  const scenario = opts?.scenario ? getScenario(opts.scenario) : null;
+  const traitPool = scenario ? [...TRAITS, ...scenario.traits] : TRAITS;
 
   let guard = 0;
   while (result.length < count && guard < 200) {
@@ -80,7 +85,7 @@ export function rollTraits(count = 3, opts?: EngineOptions): RolledTraits {
     const rarityIdx = weightedIndex(rng, RARITY_ORDER.map((r) => RARITY_WEIGHTS[r]));
     const rarity = RARITY_ORDER[rarityIdx]!;
     // 2) 在该档内抽取(排除已选)
-    const pool = TRAITS.filter((t) => t.rarity === rarity && !chosen.has(t.id));
+    const pool = traitPool.filter((t) => t.rarity === rarity && !chosen.has(t.id));
     if (pool.length === 0) continue;
     const idx = weightedIndex(rng, pool.map((t) => t.weight));
     const t = pool[idx]!;
@@ -93,17 +98,30 @@ export function rollTraits(count = 3, opts?: EngineOptions): RolledTraits {
 
 export const REROLL_MAX = 3;
 
-/** 以选定词条 + 初始加点开局,返回初始对局状态 */
+/** 查词条:先共享池,再剧本专属池 */
+function getTraitAny(id: string, scenario: Scenario | null): Trait {
+  const shared = TRAITS.find((t) => t.id === id);
+  if (shared) return shared;
+  const inScenario = scenario?.traits.find((t) => t.id === id);
+  if (inScenario) return inScenario;
+  return getTrait(id); // 让标准 getTrait 抛出统一错误
+}
+
+/** 以选定词条 + 初始加点开局,返回初始对局状态。可带剧本(基调 flag + 属性倾向) */
 export function startLife(
   traitIds: string[],
   initialAlloc: Allocation,
-  opts?: EngineOptions,
+  opts?: EngineOptions & { scenario?: ScenarioId },
 ): LifeState {
   if (traitIds.length === 0) throw new Error('至少需要一个词条');
+  const scenario = opts?.scenario ? getScenario(opts.scenario) : null;
   let attrs = { ...BASE_ATTRS };
+  if (scenario?.attrBias) attrs = applyMod(attrs, scenario.attrBias);
   const flags = new Set<string>();
+  if (scenario) flags.add(scenario.baseFlag);
+  // 剧本词条也需能查到(并入 TRAIT_MAP)
   for (const id of traitIds) {
-    const t = getTrait(id);
+    const t = getTraitAny(id, scenario);
     attrs = applyMod(attrs, t.attrMod);
     for (const f of t.flags ?? []) flags.add(f);
   }
@@ -262,6 +280,30 @@ export function resolveEnding(state: LifeState, cause: string): Ending {
       finalAge,
       cause,
       evaluation: `你一生闯荡江湖,却在${finalAge}岁那年${cause}。快意恩仇一场空,只余一声叹息。`,
+      ...extra,
+    };
+  }
+
+  // 剧本专属结局(在通用结局之前判定)
+  // 独行剑客:剑心通明 → 剑仙
+  if (f.has('scenario-swordsman') && (f.has('sword-heart') || (f.has('sword-soul') && a.agility >= 40))) {
+    return {
+      id: 'sword-immortal',
+      title: '剑仙',
+      finalAge,
+      cause,
+      evaluation: `你一生与剑相伴,无门无派,一人一剑证道。${finalAge}岁那年${cause},你的剑意长存天地之间,后世剑客皆以一睹你的剑碑为荣。`,
+      ...extra,
+    };
+  }
+  // 快意刺客:杀心成仁 → 刺客之王
+  if (f.has('scenario-assassin') && (f.has('kill-heart') || f.has('shadow'))) {
+    return {
+      id: 'assassin-king',
+      title: '刺客之王',
+      finalAge,
+      cause,
+      evaluation: `你一生隐于暗影,十步一杀,千里独行,手下从无活口。${finalAge}岁那年${cause},你的名字成了江湖上最致命的传说,夜行者至今奉你为祖。`,
       ...extra,
     };
   }
